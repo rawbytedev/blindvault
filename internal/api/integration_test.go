@@ -289,7 +289,7 @@ func TestIssueMissingFields(t *testing.T) {
 			// Expect 400 for missing fields, but for invalid hex we'll get 500.
 			if tt.name == "invalid blinded_message (not hex)" {
 				// the service will fail during deserialization and return 500,
-				require.Equal(t, http.StatusInternalServerError, resp.StatusCode, "expected 500 for invalid hex")
+				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for invalid hex")
 				// check error message
 				var errResp ErrorResponse
 				err = json.NewDecoder(resp.Body).Decode(&errResp)
@@ -367,7 +367,7 @@ func TestIssueUnauthenticated(t *testing.T) {
 			name:           "valid token (should pass auth, but fail deserialization because dummy hex is invalid)",
 			body:           dummyJSON, // dummy hex is invalid, so it will fail later with 500
 			authHeader:     "Bearer " + generateJWT(cfg.AuthSecret),
-			expectedStatus: http.StatusInternalServerError, // auth passes, but deserialization fails
+			expectedStatus: http.StatusBadRequest, // auth passes, but deserialization fails
 		},
 		{
 			name:           "valid token + valid blinded message (full success)",
@@ -540,7 +540,7 @@ func TestConsumeInvalidSignature(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	// check error message
 	var errResp ErrorResponse
@@ -573,8 +573,8 @@ func TestConsumeWrongClass(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Should fail with 500 because verification fails.
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	// Should fail with 400 because verification fails.
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	var errResp ErrorResponse
 	err = json.NewDecoder(resp.Body).Decode(&errResp)
@@ -685,8 +685,8 @@ func TestMultipleClasses(t *testing.T) {
 		resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-		// It should fail with internal error (500) because verification fails
-		require.Equal(t, http.StatusInternalServerError, resp.StatusCode, "consume with wrong class should fail")
+		// It should fail with bad request (400) because verification fails
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "consume with wrong class should fail")
 	}
 }
 
@@ -754,8 +754,8 @@ func TestEpochRotation(t *testing.T) {
 	resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	// Should fail (500) because verification fails (key mismatch)
-	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	// Should fail (400) because verification fails (key mismatch)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	// 3. Consume with unsupported epoch (should be rejected at validation)
 	consumeReq3 := ConsumeRequest{
