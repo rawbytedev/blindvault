@@ -7,20 +7,19 @@ import (
 	"net/http"
 )
 
-
 // respondJSON writes a JSON response with the given status code.
-func (s *Server) respondJSON(w http.ResponseWriter, status int, data interface{}) {
+func (s *Server) respondJSON(ctx context.Context, w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		// If we can't encode, we're in a bad state. Log and fallback.
-		logger.Error(s.getContext()).Err(err).Msg("failed to encode JSON response")
+		logger.Error(ctx).Err(err).Msg("failed to encode JSON response")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
 // respondError writes a standard error response.
-func (s *Server) respondError(w http.ResponseWriter, status int, msg string, details ...string) {
+func (s *Server) respondError(ctx context.Context, w http.ResponseWriter, status int, msg string, details ...string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
@@ -38,7 +37,7 @@ func (s *Server) respondError(w http.ResponseWriter, status int, msg string, det
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logger.Error(s.getContext()).Err(err).Msg("failed to encode error response")
+		logger.Error(ctx).Err(err).Msg("failed to encode error response")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }

@@ -26,7 +26,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	if cfg.UseMemoryStore {
 		nullifierStore = storage.NewInMemoryNullifierStore()
 	} else {
-		nullifierStore, err = storage.NewRedisNullifierStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
+		nullifierStore, err = storage.NewRedisNullifierStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, time.Duration(cfg.RedisExpiration))
 		if err != nil {
 			return nil, err // use errors.Wrap later
 		}
@@ -77,6 +77,13 @@ func NewServer(cfg *service.Config) (*Server, error) {
 
 func (s *Server) Start() error {
 	logger.Info(context.Background()).Str("addr", s.config.ListenAddr).Msg("starting server")
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.rateLimiter.Cleanup()
+		}
+	}()
 	return s.httpServer.ListenAndServe()
 }
 

@@ -51,12 +51,12 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	var req IssueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid issue request")
-		s.respondError(w, http.StatusBadRequest, "invalid request body")
+		s.respondError(ctx, w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.BlindedMessage == "" || req.CredentialClass == "" {
-		s.respondError(w, http.StatusBadRequest, "missing required fields")
+		s.respondError(ctx, w, http.StatusBadRequest, "missing required fields")
 		return
 	}
 
@@ -64,11 +64,11 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		statusCode, message := statusIssue(err)
 		// errors.Wrap already logs; we just need to return a user‑friendly error
-		s.respondError(w, statusCode, message)
+		s.respondError(ctx, w, statusCode, message)
 		return
 	}
 
-	s.respondJSON(w, http.StatusOK, IssueResponse{
+	s.respondJSON(ctx, w, http.StatusOK, IssueResponse{
 		BlindSignature: result.BlindSignature,
 		PublicKey:      result.PublicKey,
 		KeyEpoch:       result.KeyEpoch,
@@ -86,12 +86,12 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	var req ConsumeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid consume request")
-		s.respondError(w, http.StatusBadRequest, "invalid request body")
+		s.respondError(ctx, w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.UnblindedSignature == "" || req.Witness == "" || req.CredentialClass == "" || req.KeyEpoch == "" {
-		s.respondError(w, http.StatusBadRequest, "missing required fields")
+		s.respondError(ctx, w, http.StatusBadRequest, "missing required fields")
 		return
 	}
 
@@ -99,22 +99,23 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		statusCode, message := statusComsume(err)
 		// errors.Wrap already logs
-		s.respondError(w, statusCode, message)
+		s.respondError(ctx, w, statusCode, message)
 		return
 	}
 
 	if !result.Valid {
-		s.respondJSON(w, http.StatusConflict, ConsumeResponse{
+		s.respondJSON(ctx, w, http.StatusConflict, ConsumeResponse{
 			Valid: false,
 			Error: result.Error,
 		})
 		return
 	}
 
-	s.respondJSON(w, http.StatusOK, ConsumeResponse{Valid: true})
+	s.respondJSON(ctx, w, http.StatusOK, ConsumeResponse{Valid: true})
 }
 
 // handleHealth handles GET /health
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	s.respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	ctx := r.Context()
+	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
 }

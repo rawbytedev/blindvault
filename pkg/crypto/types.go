@@ -35,5 +35,3 @@ type DLEQProof struct {
 	S  Scalar  // t + c * sk
 	C  Scalar  // challenge
 }
-
-

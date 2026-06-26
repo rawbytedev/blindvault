@@ -11,26 +11,27 @@ import (
 // AuthMiddleware validates JWT for protected endpoints.
 func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			s.respondError(w, http.StatusUnauthorized, "missing authorization header")
+			s.respondError(ctx, w, http.StatusUnauthorized, "missing authorization header")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			s.respondError(w, http.StatusUnauthorized, "invalid authorization format")
+			s.respondError(ctx, w, http.StatusUnauthorized, "invalid authorization format")
 			return
 		}
 
 		claims, err := s.jwtValidator.Validate(parts[1])
 		if err != nil {
-			s.respondError(w, http.StatusUnauthorized, "invalid token")
+			s.respondError(ctx, w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 
 		// Store claims in context for later use (e.g., audit logging)
-		ctx := context.WithValue(r.Context(), "claims", claims)
+		ctx = context.WithValue(ctx, "claims", claims)
 		next(w, r.WithContext(ctx))
 	}
 }
@@ -67,7 +68,7 @@ func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			ip = r.RemoteAddr
 		}
 		if !s.rateLimiter.Allow(ip) {
-			s.respondError(w, http.StatusTooManyRequests, "rate limit exceeded")
+			s.respondError(r.Context(), w, http.StatusTooManyRequests, "rate limit exceeded")
 			return
 		}
 		next(w, r)
@@ -80,7 +81,7 @@ func (s *Server) RecoveryMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		defer func() {
 			if rec := recover(); rec != nil {
 				logger.Error(r.Context()).Interface("panic", rec).Msg("panic recovered")
-				s.respondError(w, http.StatusInternalServerError, "internal server error")
+				s.respondError(r.Context(), w, http.StatusInternalServerError, "internal server error")
 			}
 		}()
 		next(w, r)
