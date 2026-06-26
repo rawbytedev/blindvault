@@ -140,3 +140,203 @@ func TestIssueValidRequest(t *testing.T) {
 	// Optionally: verify the proof can be deserialized and verified against the blinded point
 	// (we'll skip for now, but you can add later)
 }
+
+// TestIssueMissingFields verifies that the API rejects requests with missing fields.
+func TestIssueMissingFields(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	jwt := generateJWT(cfg.AuthSecret)
+
+	tests := []struct {
+		name      string
+		body      IssueRequest
+		expectMsg string
+	}{
+		{
+			name: "missing blinded_message",
+			body: IssueRequest{
+				BlindedMessage:  "",
+				CredentialClass: "test_class",
+			},
+			expectMsg: "missing required fields",
+		},
+		{
+			name: "missing credential_class",
+			body: IssueRequest{
+				BlindedMessage:  "0123456789abcdef", // dummy hex
+				CredentialClass: "",
+			},
+			expectMsg: "missing required fields",
+		},
+		{
+			name: "both missing",
+			body: IssueRequest{
+				BlindedMessage:  "",
+				CredentialClass: "",
+			},
+			expectMsg: "missing required fields",
+		},
+		{
+			name: "invalid blinded_message (not hex)",
+			body: IssueRequest{
+				BlindedMessage:  "not-hex-value",
+				CredentialClass: "test_class",
+			},
+			expectMsg: "invalid request body",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonBody, err := json.Marshal(tt.body)
+			require.NoError(t, err)
+
+			resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, "Bearer "+jwt)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			// Expect 400 for missing fields, but for invalid hex we'll get 500.
+			if tt.name == "invalid blinded_message (not hex)" {
+				// the service will fail during deserialization and return 500,
+				require.Equal(t, http.StatusInternalServerError, resp.StatusCode, "expected 500 for invalid hex")
+				// check error message
+				var errResp ErrorResponse
+				err = json.NewDecoder(resp.Body).Decode(&errResp)
+				require.NoError(t, err)
+				require.Contains(t, errResp.Error, "issuance failed")
+			} else {
+				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for missing fields")
+				// check error message
+				var errResp ErrorResponse
+				err = json.NewDecoder(resp.Body).Decode(&errResp)
+				require.NoError(t, err)
+				require.Contains(t, errResp.Error, "missing required fields")
+			}
+		})
+	}
+}
+
+// TestIssueUnauthenticated verifies that the API rejects requests without a valid JWT.
+func TestIssueUnauthenticated(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	// Generate a valid blinded message for the "valid token" subtest.
+	engine := crypto.NewBLS12Engine()
+	msg := []byte("auth test")
+	dst := []byte(cfg.DST)
+	blindedHex, _ := createBlindedMessage(t, engine, msg, dst)
+
+	validBody := IssueRequest{
+		BlindedMessage:  blindedHex,
+		CredentialClass: "test_class",
+	}
+	validJSON, err := json.Marshal(validBody)
+	require.NoError(t, err)
+
+	// Dummy body for tests that don't care about content
+	dummyBody := IssueRequest{
+		BlindedMessage:  "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+		CredentialClass: "test_class",
+	}
+	dummyJSON, err := json.Marshal(dummyBody)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		body           []byte
+		authHeader     string
+		expectedStatus int
+	}{
+		{
+			name:           "no authorization header",
+			body:           dummyJSON,
+			authHeader:     "",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "invalid scheme (basic instead of bearer)",
+			body:           dummyJSON,
+			authHeader:     "Basic dGVzdDp0ZXN0",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "malformed token (not enough parts)",
+			body:           dummyJSON,
+			authHeader:     "Bearer",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "invalid token (random string)",
+			body:           dummyJSON,
+			authHeader:     "Bearer invalid-token",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "valid token (should pass auth, but fail deserialization because dummy hex is invalid)",
+			body:           dummyJSON, // dummy hex is invalid, so it will fail later with 500
+			authHeader:     "Bearer " + generateJWT(cfg.AuthSecret),
+			expectedStatus: http.StatusInternalServerError, // auth passes, but deserialization fails
+		},
+		{
+			name:           "valid token + valid blinded message (full success)",
+			body:           validJSON,
+			authHeader:     "Bearer " + generateJWT(cfg.AuthSecret),
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := makeRequest(ts, "POST", "/v1/credential/issue", tt.body, tt.authHeader)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			require.Equal(t, tt.expectedStatus, resp.StatusCode)
+		})
+	}
+}
+
+// TestIssueRateLimit verifies that the rate limiter rejects requests after exceeding the limit.
+func TestIssueRateLimit(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	engine := crypto.NewBLS12Engine()
+	msg := []byte("rate limit test")
+	dst := []byte(cfg.DST)
+	blindedHex, _ := createBlindedMessage(t, engine, msg, dst)
+
+	reqBody := IssueRequest{
+		BlindedMessage:  blindedHex,
+		CredentialClass: "test_class",
+	}
+	jsonBody, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	jwt := generateJWT(cfg.AuthSecret)
+	authHeader := "Bearer " + jwt
+
+	// The rate limiter allows 100 requests per minute with a burst of 20.
+	// The first 100 should succeed, the 101st should be rate-limited.
+	const totalRequests = 101
+	successCount := 0
+	for i := 0; i < totalRequests; i++ {
+		resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, authHeader)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			successCount++
+		} else if resp.StatusCode == http.StatusTooManyRequests {
+			t.Logf("Request %d rate limited", i+1)
+		} else {
+			t.Fatalf("unexpected status code %d on request %d", resp.StatusCode, i+1)
+		}
+	}
+
+	if successCount == totalRequests {
+		t.Error("rate limiter did not reject any requests, expected at least one 429")
+	}
+}
