@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -53,6 +54,96 @@ func createBlindedMessage(t *testing.T, engine *crypto.BLS12Engine, msg []byte, 
 	require.NoError(t, err)
 
 	return hex.EncodeToString(blinded.Compress()), r
+}
+
+func unblindSignature(t *testing.T, engine *crypto.BLS12Engine, blindSigHex string, r crypto.Scalar) string {
+	sigBytes, err := hex.DecodeString(blindSigHex)
+	require.NoError(t, err)
+	sig, err := crypto.DeserializeG1(sigBytes)
+	require.NoError(t, err)
+
+	unblinded, err := engine.UnblindSignature(sig, r)
+	require.NoError(t, err)
+
+	return hex.EncodeToString(unblinded.Compress())
+}
+
+// createWitness returns the G1 point H(msg) as hex.
+func createWitness(t *testing.T, engine *crypto.BLS12Engine, msg []byte, dst []byte) string {
+	point, err := engine.HashToCurve(msg, dst)
+	require.NoError(t, err)
+	return hex.EncodeToString(point.Compress())
+}
+func issueAndUnblind(t *testing.T, ts *httptest.Server, cfg *service.Config, class string, msg []byte) (sigHex, witnessHex, epoch, classRet string) {
+	engine := crypto.NewBLS12Engine()
+	dst := []byte(cfg.DST)
+
+	blindedHex, blindFactor := createBlindedMessage(t, engine, msg, dst)
+	issueReq := IssueRequest{
+		BlindedMessage:  blindedHex,
+		CredentialClass: class,
+	}
+	jsonBody, err := json.Marshal(issueReq)
+	require.NoError(t, err)
+
+	jwt := generateJWT(cfg.AuthSecret)
+	resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, "Bearer "+jwt)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var issueResp IssueResponse
+	err = json.NewDecoder(resp.Body).Decode(&issueResp)
+	require.NoError(t, err)
+
+	unblindedHex := unblindSignature(t, engine, issueResp.BlindSignature, blindFactor)
+	witnessHex = createWitness(t, engine, msg, dst)
+
+	return unblindedHex, witnessHex, issueResp.KeyEpoch, class
+}
+
+// verifyDLEQProof uses the crypto engine to verify the DLEQ proof.
+func verifyDLEQProof(t *testing.T, engine *crypto.BLS12Engine, proof DLEQProof, blindedHex string, blindSigHex string, pkHex string) bool {
+	// Deserialize blinded point, signature, and public key.
+	blindedBytes, err := hex.DecodeString(blindedHex)
+	require.NoError(t, err)
+	blinded, err := crypto.DeserializeG1(blindedBytes)
+	require.NoError(t, err)
+
+	sigBytes, err := hex.DecodeString(blindSigHex)
+	require.NoError(t, err)
+	sig, err := crypto.DeserializeG1(sigBytes)
+	require.NoError(t, err)
+
+	pkBytes, err := hex.DecodeString(pkHex)
+	require.NoError(t, err)
+	pk, err := crypto.DeserializeG2(pkBytes)
+	require.NoError(t, err)
+	r1, err := hex.DecodeString(proof.R1)
+	require.NoError(t, err)
+	r2, err := hex.DecodeString(proof.R2)
+	require.NoError(t, err)
+	s, err := hex.DecodeString(proof.S)
+	require.NoError(t, err)
+	c, err := hex.DecodeString(proof.C)
+	require.NoError(t, err)
+	// Reconstruct DLEQProof struct
+	R1, err := crypto.DeserializeG2(r1)
+	require.NoError(t, err)
+	R2, err := crypto.DeserializeG1(r2)
+	require.NoError(t, err)
+	S, err := crypto.NewBlstScalarFromBytes(s)
+	require.NoError(t, err)
+	C, err := crypto.NewBlstScalarFromBytes(c)
+	require.NoError(t, err)
+
+	dleqProof := &crypto.DLEQProof{
+		R1: R1,
+		R2: R2,
+		S:  S,
+		C:  C,
+	}
+	return engine.DLEQVerify(dleqProof, blinded, sig, pk)
 }
 
 // makeRequest sends an HTTP request to the test server.
@@ -138,7 +229,6 @@ func TestIssueValidRequest(t *testing.T) {
 	require.NoError(t, err, "proof.C not valid hex")
 
 	// Optionally: verify the proof can be deserialized and verified against the blinded point
-	// (we'll skip for now, but you can add later)
 }
 
 // TestIssueMissingFields verifies that the API rejects requests with missing fields.
@@ -296,6 +386,391 @@ func TestIssueUnauthenticated(t *testing.T) {
 			require.Equal(t, tt.expectedStatus, resp.StatusCode)
 		})
 	}
+}
+
+// TestConsumeValid tests a successful consume (redeem) flow.
+func TestConsumeValid(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	engine := crypto.NewBLS12Engine()
+	msg := []byte("consume test")
+	dst := []byte(cfg.DST)
+
+	// 1. Issue a blinded credential.
+	blindedHex, r := createBlindedMessage(t, engine, msg, dst)
+	issueReq := IssueRequest{
+		BlindedMessage:  blindedHex,
+		CredentialClass: "consume_class",
+	}
+	issueJSON, err := json.Marshal(issueReq)
+	require.NoError(t, err)
+
+	jwt := generateJWT(cfg.AuthSecret)
+	issueResp, err := makeRequest(ts, "POST", "/v1/credential/issue", issueJSON, "Bearer "+jwt)
+	require.NoError(t, err)
+	defer issueResp.Body.Close()
+	require.Equal(t, http.StatusOK, issueResp.StatusCode)
+
+	var issueBody IssueResponse
+	err = json.NewDecoder(issueResp.Body).Decode(&issueBody)
+	require.NoError(t, err)
+
+	// 2. Unblind the signature.
+	unblindedHex := unblindSignature(t, engine, issueBody.BlindSignature, r)
+
+	// 3. Compute the witness (Y = H(msg)).
+	point, err := engine.HashToCurve(msg, dst)
+	require.NoError(t, err)
+	witnessHex := hex.EncodeToString(point.Compress())
+
+	// 4. Consume the credential.
+	consumeReq := ConsumeRequest{
+		UnblindedSignature: unblindedHex,
+		Witness:            witnessHex,
+		CredentialClass:    "consume_class",
+		KeyEpoch:           issueBody.KeyEpoch,
+	}
+	consumeJSON, err := json.Marshal(consumeReq)
+	require.NoError(t, err)
+
+	consumeResp, err := makeRequest(ts, "POST", "/v1/credential/consume", consumeJSON, "") // No auth required
+	require.NoError(t, err)
+	defer consumeResp.Body.Close()
+
+	require.Equal(t, http.StatusOK, consumeResp.StatusCode)
+	var consumeBody ConsumeResponse
+	err = json.NewDecoder(consumeResp.Body).Decode(&consumeBody)
+	require.NoError(t, err)
+	require.True(t, consumeBody.Valid, "consume response valid should be true")
+}
+
+// TestConsumeReplay verifies that consuming the same credential twice fails on the second attempt.
+func TestConsumeReplay(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	engine := crypto.NewBLS12Engine()
+	msg := []byte("replay test")
+	dst := []byte(cfg.DST)
+
+	// 1. Issue
+	blindedHex, blindFactor := createBlindedMessage(t, engine, msg, dst)
+	issueReq := IssueRequest{
+		BlindedMessage:  blindedHex,
+		CredentialClass: "replay_class",
+	}
+	jsonBody, err := json.Marshal(issueReq)
+	require.NoError(t, err)
+
+	jwt := generateJWT(cfg.AuthSecret)
+	resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, "Bearer "+jwt)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var issueResp IssueResponse
+	err = json.NewDecoder(resp.Body).Decode(&issueResp)
+	require.NoError(t, err)
+
+	// 2. Unblind
+	unblindedHex := unblindSignature(t, engine, issueResp.BlindSignature, blindFactor)
+
+	// 3. Witness
+	witnessHex := createWitness(t, engine, msg, dst)
+
+	// 4. First consume (should succeed)
+	consumeReq := ConsumeRequest{
+		UnblindedSignature: unblindedHex,
+		Witness:            witnessHex,
+		CredentialClass:    "replay_class",
+		KeyEpoch:           issueResp.KeyEpoch,
+	}
+	jsonBody, err = json.Marshal(consumeReq)
+	require.NoError(t, err)
+
+	resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var consumeResp ConsumeResponse
+	err = json.NewDecoder(resp.Body).Decode(&consumeResp)
+	require.NoError(t, err)
+	require.True(t, consumeResp.Valid, "first consume should succeed")
+
+	// 5. Second consume (should fail with 409 Conflict)
+	resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusConflict, resp.StatusCode)
+
+	err = json.NewDecoder(resp.Body).Decode(&consumeResp)
+	require.NoError(t, err)
+	require.False(t, consumeResp.Valid, "second consume should be invalid")
+	require.Contains(t, consumeResp.Error, "credential already redeemed")
+}
+
+// TestConsumeInvalidSignature verifies that a tampered signature is rejected.
+func TestConsumeInvalidSignature(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	msg := []byte("tamper test")
+	class := "tamper_class"
+
+	// Get a valid credential
+	_, witnessHex, epoch, _ := issueAndUnblind(t, ts, cfg, class, msg)
+
+	tamperedBytes := make([]byte, 48)
+	_, err := rand.Read(tamperedBytes)
+	require.NoError(t, err)
+	tamperedHex := hex.EncodeToString(tamperedBytes)
+
+	consumeReq := ConsumeRequest{
+		UnblindedSignature: tamperedHex,
+		Witness:            witnessHex,
+		CredentialClass:    class,
+		KeyEpoch:           epoch,
+	}
+	jsonBody, err := json.Marshal(consumeReq)
+	require.NoError(t, err)
+
+	resp, err := makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	// check error message
+	var errResp ErrorResponse
+	err = json.NewDecoder(resp.Body).Decode(&errResp)
+	require.NoError(t, err)
+	require.Contains(t, errResp.Error, "consumption failed")
+}
+
+// TestConsumeWrongClass verifies that consuming a credential with the wrong class fails.
+func TestConsumeWrongClass(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	msg := []byte("class test")
+	issuedClass := "correct_class"
+	wrongClass := "wrong_class"
+
+	sigHex, witnessHex, epoch, _ := issueAndUnblind(t, ts, cfg, issuedClass, msg)
+
+	consumeReq := ConsumeRequest{
+		UnblindedSignature: sigHex,
+		Witness:            witnessHex,
+		CredentialClass:    wrongClass,
+		KeyEpoch:           epoch,
+	}
+	jsonBody, err := json.Marshal(consumeReq)
+	require.NoError(t, err)
+
+	resp, err := makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Should fail with 500 because verification fails.
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	var errResp ErrorResponse
+	err = json.NewDecoder(resp.Body).Decode(&errResp)
+	require.NoError(t, err)
+	require.Contains(t, errResp.Error, "consumption failed")
+}
+
+// TestConsumeWrongEpoch verifies that consuming with an unsupported epoch fails.
+func TestConsumeWrongEpoch(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	msg := []byte("epoch test")
+	class := "epoch_class"
+
+	sigHex, witnessHex, _, _ := issueAndUnblind(t, ts, cfg, class, msg)
+	// Our config supports "2026-01" and "2026-02". To test unsupported, we'll use "1970-01".
+	wrongEpoch := "1970-01"
+
+	consumeReq := ConsumeRequest{
+		UnblindedSignature: sigHex,
+		Witness:            witnessHex,
+		CredentialClass:    class,
+		KeyEpoch:           wrongEpoch,
+	}
+	jsonBody, err := json.Marshal(consumeReq)
+	require.NoError(t, err)
+
+	resp, err := makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Our config validation will reject unsupported epoch (should return 400).
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	var errResp ErrorResponse
+	err = json.NewDecoder(resp.Body).Decode(&errResp)
+	require.NoError(t, err)
+	require.Contains(t, errResp.Error, "unsupported key_epoch")
+}
+
+// TestMultipleClasses verifies that credentials from different classes are isolated.
+func TestMultipleClasses(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	engine := crypto.NewBLS12Engine()
+	dst := []byte(cfg.DST)
+
+	classes := []string{"class_a", "class_b"}
+	msgs := [][]byte{[]byte("message for class a"), []byte("message for class b")}
+	jwt := generateJWT(cfg.AuthSecret)
+
+	for i, class := range classes {
+		// Issue for each class
+		blindedHex, blindFactor := createBlindedMessage(t, engine, msgs[i], dst)
+		issueReq := IssueRequest{
+			BlindedMessage:  blindedHex,
+			CredentialClass: class,
+		}
+		jsonBody, err := json.Marshal(issueReq)
+		require.NoError(t, err)
+
+		resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, "Bearer "+jwt)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var issueResp IssueResponse
+		err = json.NewDecoder(resp.Body).Decode(&issueResp)
+		require.NoError(t, err)
+
+		// Unblind
+		unblindedHex := unblindSignature(t, engine, issueResp.BlindSignature, blindFactor)
+		witnessHex := createWitness(t, engine, msgs[i], dst)
+
+		// Consume with correct class
+		consumeReq := ConsumeRequest{
+			UnblindedSignature: unblindedHex,
+			Witness:            witnessHex,
+			CredentialClass:    class,
+			KeyEpoch:           issueResp.KeyEpoch,
+		}
+		jsonBody, err = json.Marshal(consumeReq)
+		require.NoError(t, err)
+
+		resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var consumeResp ConsumeResponse
+		err = json.NewDecoder(resp.Body).Decode(&consumeResp)
+		require.NoError(t, err)
+		require.True(t, consumeResp.Valid, "consume for class %s should succeed", class)
+
+		// Try to consume the same credential with the other class (should fail)
+		otherClass := classes[1-i]
+		consumeReqWrong := ConsumeRequest{
+			UnblindedSignature: unblindedHex,
+			Witness:            witnessHex,
+			CredentialClass:    otherClass,
+			KeyEpoch:           issueResp.KeyEpoch,
+		}
+		jsonBody, err = json.Marshal(consumeReqWrong)
+		require.NoError(t, err)
+
+		resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		// It should fail with internal error (500) because verification fails
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode, "consume with wrong class should fail")
+	}
+}
+
+// TestEpochRotation verifies that multiple epochs are supported and that credentials issued with one epoch cannot be consumed with a different epoch (if not supported).
+// Our test uses supported epochs: 2026-01 and 2026-02.
+func TestEpochRotation(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	engine := crypto.NewBLS12Engine()
+	msg := []byte("epoch test")
+	dst := []byte(cfg.DST)
+
+	// Issue with active epoch (2026-01)
+	blindedHex, blindFactor := createBlindedMessage(t, engine, msg, dst)
+	issueReq := IssueRequest{
+		BlindedMessage:  blindedHex,
+		CredentialClass: "epoch_class",
+	}
+	jsonBody, err := json.Marshal(issueReq)
+	require.NoError(t, err)
+
+	jwt := generateJWT(cfg.AuthSecret)
+	resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, "Bearer "+jwt)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var issueResp IssueResponse
+	err = json.NewDecoder(resp.Body).Decode(&issueResp)
+	require.NoError(t, err)
+	require.Equal(t, cfg.ActiveEpoch, issueResp.KeyEpoch) // should be "2026-01"
+
+	// Unblind
+	unblindedHex := unblindSignature(t, engine, issueResp.BlindSignature, blindFactor)
+	witnessHex := createWitness(t, engine, msg, dst)
+
+	// 1. Consume with same epoch (should succeed)
+	consumeReq := ConsumeRequest{
+		UnblindedSignature: unblindedHex,
+		Witness:            witnessHex,
+		CredentialClass:    "epoch_class",
+		KeyEpoch:           cfg.ActiveEpoch,
+	}
+	jsonBody, err = json.Marshal(consumeReq)
+	require.NoError(t, err)
+	resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var consumeResp ConsumeResponse
+	err = json.NewDecoder(resp.Body).Decode(&consumeResp)
+	require.NoError(t, err)
+	require.True(t, consumeResp.Valid)
+
+	// 2. Consume with a different supported epoch (2026-02) – should fail because the signature was signed with epoch 2026-01.
+	consumeReq2 := ConsumeRequest{
+		UnblindedSignature: unblindedHex,
+		Witness:            witnessHex,
+		CredentialClass:    "epoch_class",
+		KeyEpoch:           "2026-02",
+	}
+	jsonBody, err = json.Marshal(consumeReq2)
+	require.NoError(t, err)
+	resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	// Should fail (500) because verification fails (key mismatch)
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	// 3. Consume with unsupported epoch (should be rejected at validation)
+	consumeReq3 := ConsumeRequest{
+		UnblindedSignature: unblindedHex,
+		Witness:            witnessHex,
+		CredentialClass:    "epoch_class",
+		KeyEpoch:           "2025-12",
+	}
+	jsonBody, err = json.Marshal(consumeReq3)
+	require.NoError(t, err)
+	resp, err = makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	// Should be 400 because unsupported epoch
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 // TestIssueRateLimit verifies that the rate limiter rejects requests after exceeding the limit.
