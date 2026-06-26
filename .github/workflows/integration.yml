@@ -20,7 +20,15 @@ jobs:
         go-version: '1.25'
         cache: true
 
-    - name: Run integration tests
+    - name: Run full test suite
+      run: go test ./...
+
+    - name: Run integration tests with timeout
       run: |
-        # Run the full end-to-end integration test (with timeout)
         go test -v -timeout 15m ./internal/api
+
+    - name: Generate and print crypto vectors
+      run: |
+        go run scripts/generate_vectors.go --output docs/crypto_vectors.md
+        echo "Generated vectors:"
+        cat docs/crypto_vectors.md
