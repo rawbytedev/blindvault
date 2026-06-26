@@ -48,7 +48,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	mux.HandleFunc("POST /v1/credential/issue",
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
-				s.AuthMiddleware(s.handleIssue),
+				s.RateLimitMiddleware(
+					s.AuthMiddleware(s.handleIssue),
+				),
 			),
 		),
 	)
