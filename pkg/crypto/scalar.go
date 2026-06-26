@@ -56,7 +56,6 @@ func NewBlstScalarWithDomain(b []byte, domain []byte) *BlstScalar {
 }
 
 // NewRandomScalar generates a cryptographically secure random scalar
-// for internal use (e.g., DLEQ proof generation).
 func NewRandomScalar() (Scalar, error) {
 	seed := make([]byte, 48)
 	if _, err := rand.Read(seed); err != nil {
