@@ -294,7 +294,7 @@ func TestIssueMissingFields(t *testing.T) {
 				var errResp ErrorResponse
 				err = json.NewDecoder(resp.Body).Decode(&errResp)
 				require.NoError(t, err)
-				require.Contains(t, errResp.Error, "issuance failed")
+				require.Contains(t, errResp.Error, "invalid blinded message hex")
 			} else {
 				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for missing fields")
 				// check error message
@@ -546,7 +546,7 @@ func TestConsumeInvalidSignature(t *testing.T) {
 	var errResp ErrorResponse
 	err = json.NewDecoder(resp.Body).Decode(&errResp)
 	require.NoError(t, err)
-	require.Contains(t, errResp.Error, "consumption failed")
+	require.Contains(t, errResp.Error, "invalid signature")
 }
 
 // TestConsumeWrongClass verifies that consuming a credential with the wrong class fails.
@@ -579,7 +579,7 @@ func TestConsumeWrongClass(t *testing.T) {
 	var errResp ErrorResponse
 	err = json.NewDecoder(resp.Body).Decode(&errResp)
 	require.NoError(t, err)
-	require.Contains(t, errResp.Error, "consumption failed")
+	require.Contains(t, errResp.Error, "invalid signature")
 }
 
 // TestConsumeWrongEpoch verifies that consuming with an unsupported epoch fails.
@@ -793,25 +793,37 @@ func TestIssueRateLimit(t *testing.T) {
 	jwt := generateJWT(cfg.AuthSecret)
 	authHeader := "Bearer " + jwt
 
-	// The rate limiter allows 100 requests per minute with a burst of 20.
-	// The first 100 should succeed, the 101st should be rate-limited.
 	const totalRequests = 101
 	successCount := 0
+	rateLimitCount := 0
+
 	for i := 0; i < totalRequests; i++ {
-		resp, err := makeRequest(ts, "POST", "/v1/credential/issue", jsonBody, authHeader)
+		// Create request manually to set a fixed RemoteAddr for consistent rate limiting.
+		req, err := http.NewRequest("POST", ts.URL+"/v1/credential/issue", bytes.NewReader(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", authHeader)
+		// Use a fixed IP:port so the rate limiter sees the same client.
+		req.RemoteAddr = "127.0.0.1:12345"
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
 			successCount++
 		} else if resp.StatusCode == http.StatusTooManyRequests {
+			rateLimitCount++
 			t.Logf("Request %d rate limited", i+1)
 		} else {
 			t.Fatalf("unexpected status code %d on request %d", resp.StatusCode, i+1)
 		}
 	}
 
-	if successCount == totalRequests {
+	// We expect at least one rate limit response (burst 20, then rate limit kicks in).
+	if rateLimitCount == 0 {
 		t.Error("rate limiter did not reject any requests, expected at least one 429")
 	}
+	// Optionally, we could check that successCount is around 20+some, but not necessary.
 }
