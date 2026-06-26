@@ -18,9 +18,9 @@ type CredentialService struct {
 
 func (s *CredentialService) Close() error {
 	if s.store != nil {
-        return s.store.Close()
-    }
-    return nil
+		return s.store.Close()
+	}
+	return nil
 }
 
 func NewCredentialService(cfg *Config, store storage.NullifierStore) *CredentialService {
@@ -35,7 +35,7 @@ func NewCredentialService(cfg *Config, store storage.NullifierStore) *Credential
 func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string) (*IssueResult, error) {
 	// 1. Validate class
 	if class == "" {
-		return nil, errors.New(ctx ,"credential_class cannot be empty")
+		return nil, errors.New(ctx, "credential_class cannot be empty")
 	}
 
 	// 2. Decode blinded message
@@ -89,7 +89,7 @@ func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string)
 }
 
 // Consume verifies and consumes an unblinded credential.
-func (s *CredentialService) Consume(ctx context.Context,sigHex, witnessHex, class, epoch string) (*ConsumeResult, error) {
+func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, class, epoch string) (*ConsumeResult, error) {
 	// 1. Validate inputs
 	if class == "" {
 		return nil, errors.New(ctx, "credential_class cannot be empty")
