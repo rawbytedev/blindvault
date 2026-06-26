@@ -793,7 +793,7 @@ func TestIssueRateLimit(t *testing.T) {
 	jwt := generateJWT(cfg.AuthSecret)
 	authHeader := "Bearer " + jwt
 
-	const totalRequests = 101
+	const totalRequests = 102
 	successCount := 0
 	rateLimitCount := 0
 
