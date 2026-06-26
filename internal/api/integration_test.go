@@ -803,8 +803,7 @@ func TestIssueRateLimit(t *testing.T) {
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", authHeader)
-		// Use a fixed IP:port so the rate limiter sees the same client.
-		req.RemoteAddr = "127.0.0.1:12345"
+		req.Header.Set("X-Forwarded-For", "192.168.1.100")
 
 		client := &http.Client{}
 		resp, err := client.Do(req)

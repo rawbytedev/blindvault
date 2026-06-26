@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strings"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -32,7 +33,9 @@ func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
 func (rl *RateLimiter) Allow(ip string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-
+	if strings.Contains(ip, ":") {
+		ip = strings.Split(ip, ":")[0]
+	}
 	limiter, exists := rl.clients[ip]
 	if !exists {
 		limiter = rate.NewLimiter(rl.limit, rl.burst)

@@ -62,7 +62,10 @@ func (s *Server) LoggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Use a simple in-memory rate limiter or Redis-based
-		ip := r.RemoteAddr
+		ip := r.Header.Get("X-Forwarded-For")
+		if ip == "" {
+			ip = r.RemoteAddr
+		}
 		if !s.rateLimiter.Allow(ip) {
 			s.respondError(w, http.StatusTooManyRequests, "rate limit exceeded")
 			return
