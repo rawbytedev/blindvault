@@ -70,7 +70,10 @@ func main() {
 		PublicKey      string `json:"public_key"`
 		KeyEpoch       string `json:"key_epoch"`
 	}
-	json.Unmarshal(body, &issueResp)
+	err = json.Unmarshal(body, &issueResp)
+	if err != nil {
+		panic(err)
+	}
 
 	// 4. Unblind
 	sigBytes, _ := hex.DecodeString(issueResp.BlindSignature)

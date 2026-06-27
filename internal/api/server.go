@@ -68,7 +68,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		),
 	)
 	mux.HandleFunc("GET /health", s.handleHealth)
-	//mux.HandleFunc("GET /metrics", s.metricsHandler)
+	mux.HandleFunc("GET /metrics", s.metricsHandler)
 
 	s.httpServer = &http.Server{
 		Addr:         cfg.ListenAddr,

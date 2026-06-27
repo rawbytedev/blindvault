@@ -67,7 +67,8 @@ func TestVerifyRejectsInvalidSubgroupSecured(t *testing.T) {
 	// Create an invalid point by deserializing random bytes
 	invalidSig := &G1Point{inner: new(blst.P1)}
 	randomBytes := make([]byte, 48)
-	rand.Read(randomBytes)
+	_, err := rand.Read(randomBytes)
+	require.NoError(t, err, "failed to generate random bytes")
 	invalidSig.inner.ToAffine().Deserialize(randomBytes)
 
 	// This may or may not fail depending on random bytes, but we ensure valid passes

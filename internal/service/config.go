@@ -43,8 +43,13 @@ func (c *Config) Validate() error {
 		// If not specified, use active epoch only
 		c.SupportedEpochs = []string{c.ActiveEpoch}
 	}
-	if c.AuthSecret == "" && c.RedisAddr == "" {
-		// For production, both should be set, but we allow for dev
+	if !c.UseMemoryStore {
+		if c.RedisAddr == "" {
+			return fmt.Errorf("redis_addr must be provided")
+		}
+	}
+	if c.AuthSecret == "" {
+		return fmt.Errorf("auth_secret is required")
 	}
 	return nil
 }

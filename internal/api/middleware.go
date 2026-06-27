@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+type contextKey string
+
+const (
+	claimsKey contextKey = "claims"
+)
+
 // AuthMiddleware validates JWT for protected endpoints.
 func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +37,7 @@ func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Store claims in context for later use (e.g., audit logging)
-		ctx = context.WithValue(ctx, "claims", claims)
+		ctx = context.WithValue(ctx, claimsKey, claims)
 		next(w, r.WithContext(ctx))
 	}
 }

@@ -102,50 +102,6 @@ func issueAndUnblind(t *testing.T, ts *httptest.Server, cfg *service.Config, cla
 	return unblindedHex, witnessHex, issueResp.KeyEpoch, class
 }
 
-// verifyDLEQProof uses the crypto engine to verify the DLEQ proof.
-func verifyDLEQProof(t *testing.T, engine *crypto.BLS12Engine, proof DLEQProof, blindedHex string, blindSigHex string, pkHex string) bool {
-	// Deserialize blinded point, signature, and public key.
-	blindedBytes, err := hex.DecodeString(blindedHex)
-	require.NoError(t, err)
-	blinded, err := crypto.DeserializeG1(blindedBytes)
-	require.NoError(t, err)
-
-	sigBytes, err := hex.DecodeString(blindSigHex)
-	require.NoError(t, err)
-	sig, err := crypto.DeserializeG1(sigBytes)
-	require.NoError(t, err)
-
-	pkBytes, err := hex.DecodeString(pkHex)
-	require.NoError(t, err)
-	pk, err := crypto.DeserializeG2(pkBytes)
-	require.NoError(t, err)
-	r1, err := hex.DecodeString(proof.R1)
-	require.NoError(t, err)
-	r2, err := hex.DecodeString(proof.R2)
-	require.NoError(t, err)
-	s, err := hex.DecodeString(proof.S)
-	require.NoError(t, err)
-	c, err := hex.DecodeString(proof.C)
-	require.NoError(t, err)
-	// Reconstruct DLEQProof struct
-	R1, err := crypto.DeserializeG2(r1)
-	require.NoError(t, err)
-	R2, err := crypto.DeserializeG1(r2)
-	require.NoError(t, err)
-	S, err := crypto.NewBlstScalarFromBytes(s)
-	require.NoError(t, err)
-	C, err := crypto.NewBlstScalarFromBytes(c)
-	require.NoError(t, err)
-
-	dleqProof := &crypto.DLEQProof{
-		R1: R1,
-		R2: R2,
-		S:  S,
-		C:  C,
-	}
-	return engine.DLEQVerify(dleqProof, blinded, sig, pk)
-}
-
 // makeRequest sends an HTTP request to the test server.
 func makeRequest(ts *httptest.Server, method, path string, body []byte, authHeader string) (*http.Response, error) {
 	client := &http.Client{}
