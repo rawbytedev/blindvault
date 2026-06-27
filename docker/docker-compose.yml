@@ -1,0 +1,39 @@
+# docker/docker-compose.yml
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  blindvault:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Override config values with environment variables
+      MASTER_SEED_HEX: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      ACTIVE_EPOCH: "2026-01"
+      REDIS_ADDR: "redis:6379"
+      AUTH_SECRET: "super-secret-token"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      # Mount configs
+      - ../configs:/app/configs:ro
+
+volumes:
+  redis_data:
