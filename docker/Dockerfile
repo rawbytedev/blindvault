@@ -1,6 +1,6 @@
 # docker/Dockerfile
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25.2-alpine AS builder
 
 # Install build dependencies for BLST (CGO)
 RUN apk add --no-cache gcc musl-dev
