@@ -1,3 +1,4 @@
+// Command server starts the BlindVault HTTP API server.
 package main
 
 import (
@@ -15,6 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// main initializes server configuration, builds the API server, and handles graceful shutdown.
 func main() {
 	configPath := flag.String("config", "configs/config.yaml", "path to config file")
 	flag.Parse()
@@ -58,6 +60,7 @@ func main() {
 	}
 }
 
+// loadConfig reads YAML configuration and applies environment variable overrides.
 func loadConfig(path string) (*service.Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

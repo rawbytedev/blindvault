@@ -1,3 +1,4 @@
+// Package api provides HTTP helpers and middleware for the BlindVault server.
 package api
 
 import (

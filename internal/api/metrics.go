@@ -1,3 +1,4 @@
+// Package api provides request handling, metrics collection, and middleware for BlindVault.
 package api
 
 import (

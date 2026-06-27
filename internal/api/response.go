@@ -1,3 +1,4 @@
+// Package api provides HTTP response helpers and error formatting for BlindVault.
 package api
 
 import (
@@ -40,15 +41,4 @@ func (s *Server) respondError(ctx context.Context, w http.ResponseWriter, status
 		logger.Error(ctx).Err(err).Msg("failed to encode error response")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
-}
-
-// getContext is a helper to get the request context from the current goroutine.
-// Since this is called from response helpers (which don't have context directly),
-// we need to rely on the fact that we're inside a request handler.
-// For better design, consider passing context to these helpers, but for simplicity,
-// we'll use context.Background() and rely on the middleware to set the request_id.
-func (s *Server) getContext() context.Context {
-	// In production, you'd pass the context through the request.
-	// This fallback is safe.
-	return context.Background()
 }

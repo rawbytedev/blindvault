@@ -1,3 +1,4 @@
+// Package api implements BlindVault HTTP server wiring, middleware, and request handling.
 package api
 
 import (
@@ -12,6 +13,7 @@ import (
 	"blindvault/pkg/metrics"
 )
 
+// Server provides the HTTP server, middleware, and credential service for BlindVault.
 type Server struct {
 	httpServer        *http.Server
 	config            *service.Config
@@ -79,6 +81,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	return s, nil
 }
 
+// Start begins serving HTTP requests and periodically cleans up rate limiter state.
 func (s *Server) Start() error {
 	logger.Info(context.Background()).Str("addr", s.config.ListenAddr).Msg("starting server")
 	go func() {
@@ -91,6 +94,7 @@ func (s *Server) Start() error {
 	return s.httpServer.ListenAndServe()
 }
 
+// Shutdown gracefully stops the HTTP server and closes backend resources.
 func (s *Server) Shutdown(ctx context.Context) error {
 	logger.Info(ctx).Msg("shutting down server")
 	if err := s.credentialService.Close(); err != nil {

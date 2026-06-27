@@ -1,3 +1,4 @@
+// Package api defines the HTTP request and response models for BlindVault.
 package api
 
 // ----- Issue Request -----

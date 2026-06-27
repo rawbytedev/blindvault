@@ -24,6 +24,8 @@ func statusIssue(err error) (int, string) {
 	}
 	return http.StatusOK, "success"
 }
+
+// statusConsume maps known consume-side errors to HTTP status codes and client messages.
 func statusComsume(err error) (int, string) {
 	if err != nil {
 		// Map known errors to appropriate status codes

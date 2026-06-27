@@ -1,3 +1,4 @@
+// Package api provides request handling, middleware, and rate limiting for BlindVault.
 package api
 
 import (
