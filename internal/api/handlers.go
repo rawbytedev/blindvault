@@ -51,11 +51,13 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	var req IssueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid issue request")
+		s.metrics.RecordIssuance("failure", "unknown")
 		s.respondError(ctx, w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.BlindedMessage == "" || req.CredentialClass == "" {
+		s.metrics.RecordIssuance("failure", req.CredentialClass)
 		s.respondError(ctx, w, http.StatusBadRequest, "missing required fields")
 		return
 	}
@@ -63,11 +65,11 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	result, err := s.credentialService.Issue(ctx, req.BlindedMessage, req.CredentialClass)
 	if err != nil {
 		statusCode, message := statusIssue(err)
-		// errors.Wrap already logs; we just need to return a user‑friendly error
+		s.metrics.RecordIssuance("failure", req.CredentialClass)
 		s.respondError(ctx, w, statusCode, message)
 		return
 	}
-
+	s.metrics.RecordIssuance("success", req.CredentialClass)
 	s.respondJSON(ctx, w, http.StatusOK, IssueResponse{
 		BlindSignature: result.BlindSignature,
 		PublicKey:      result.PublicKey,
@@ -86,11 +88,13 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	var req ConsumeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid consume request")
+		s.metrics.RecordConsumption("failure", "unknown", "unknown")
 		s.respondError(ctx, w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.UnblindedSignature == "" || req.Witness == "" || req.CredentialClass == "" || req.KeyEpoch == "" {
+		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
 		s.respondError(ctx, w, http.StatusBadRequest, "missing required fields")
 		return
 	}
@@ -98,19 +102,20 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	result, err := s.credentialService.Consume(ctx, req.UnblindedSignature, req.Witness, req.CredentialClass, req.KeyEpoch)
 	if err != nil {
 		statusCode, message := statusComsume(err)
-		// errors.Wrap already logs
+		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
 		s.respondError(ctx, w, statusCode, message)
 		return
 	}
 
 	if !result.Valid {
+		s.metrics.RecordConsumption("replay", req.CredentialClass, req.KeyEpoch)
 		s.respondJSON(ctx, w, http.StatusConflict, ConsumeResponse{
 			Valid: false,
 			Error: result.Error,
 		})
 		return
 	}
-
+	s.metrics.RecordConsumption("success", req.CredentialClass, req.KeyEpoch)
 	s.respondJSON(ctx, w, http.StatusOK, ConsumeResponse{Valid: true})
 }
 
@@ -118,4 +123,8 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
+	s.metrics.MetricsHandler().ServeHTTP(w, r)
 }

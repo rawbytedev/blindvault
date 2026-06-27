@@ -56,6 +56,8 @@ func (s *Server) LoggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			Int("status", wrapped.Status()).
 			Dur("duration", time.Since(start)).
 			Msg("request completed")
+
+		s.metrics.RecordHTTPRequest(r.Method, r.URL.Path, wrapped.Status(), time.Since(start))
 	}
 }
 

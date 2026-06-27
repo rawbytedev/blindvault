@@ -9,6 +9,7 @@ import (
 	"blindvault/internal/service"
 	"blindvault/internal/storage"
 	"blindvault/pkg/logger"
+	"blindvault/pkg/metrics"
 )
 
 type Server struct {
@@ -17,16 +18,18 @@ type Server struct {
 	jwtValidator      *auth.JWTValidator
 	rateLimiter       *RateLimiter
 	credentialService *service.CredentialService
+	metrics           metrics.MetricsReporter
 }
 
 func NewServer(cfg *service.Config) (*Server, error) {
 	// Init storage
 	var nullifierStore storage.NullifierStore
 	var err error
+	metrics := NewMetricsCollector()
 	if cfg.UseMemoryStore {
 		nullifierStore = storage.NewInMemoryNullifierStore()
 	} else {
-		nullifierStore, err = storage.NewRedisNullifierStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, time.Duration(cfg.RedisExpiration))
+		nullifierStore, err = storage.NewRedisNullifierStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, time.Duration(cfg.RedisExpiration), metrics)
 		if err != nil {
 			return nil, err // use errors.Wrap later
 		}
@@ -41,6 +44,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		jwtValidator:      jwtValidator,
 		rateLimiter:       rateLimiter,
 		credentialService: credService,
+		metrics:           metrics,
 	}
 
 	mux := http.NewServeMux()
