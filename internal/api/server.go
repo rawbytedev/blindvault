@@ -27,7 +27,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	// Init storage
 	var nullifierStore storage.NullifierStore
 	var err error
-	metrics := NewMetricsCollector()
+	metrics := GetMetrics()
 	if cfg.UseMemoryStore {
 		nullifierStore = storage.NewInMemoryNullifierStore()
 	} else {

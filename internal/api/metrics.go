@@ -5,11 +5,25 @@ import (
 	"blindvault/pkg/metrics"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var (
+	metricsOnce   sync.Once
+	globalMetrics metrics.MetricsReporter
+)
+
+// GetMetrics returns the global singleton MetricsCollector.
+func GetMetrics() metrics.MetricsReporter {
+	metricsOnce.Do(func() {
+		globalMetrics = NewMetricsCollector()
+	})
+	return globalMetrics
+}
 
 // MetricsCollector holds all Prometheus metrics for the service.
 type MetricsCollector struct {
@@ -65,7 +79,6 @@ func NewMetricsCollector() metrics.MetricsReporter {
 			[]string{"operation", "result"},
 		),
 	}
-
 	// Register all metrics with Prometheus
 	prometheus.MustRegister(
 		m.httpRequestsTotal,
