@@ -129,6 +129,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
 }
+
 // metricsHandler serves the Prometheus metrics endpoint.
 func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	s.metrics.MetricsHandler().ServeHTTP(w, r)

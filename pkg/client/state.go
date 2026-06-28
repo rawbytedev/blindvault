@@ -53,6 +53,7 @@ func NewStateWithDir(dir string) (*State, error) {
 	}
 	return s, nil
 }
+
 // load reads the state from disk.
 func (s *State) load() error {
 	s.mu.Lock()
