@@ -34,10 +34,33 @@ curl http://localhost:8080/health
 ## Documentation
 
 - `docs/api_reference.md` — API endpoints, request and response formats, and errors
+- `docs/client_reference.md` — Go client library and CLI usage
 - `docs/deployment_guide.md` — deployment, Docker Compose, Redis setup, and health checks
 - `docs/crypto_spec.md` — cryptographic specification, DLEQ proof details, and security assumptions
 - `docs/crypto_vectors.md` — generated test vector placeholder
 - `CONTRIBUTING.md` — contribution process and testing guidelines
+
+## Client package and CLI
+
+BlindVault includes a high-level Go client wrapper in `pkg/client` and a command-line interface in `cmd/bv`.
+
+Build the CLI:
+
+```bash
+go build -o bv ./cmd/bv
+```
+
+Examples:
+
+```bash
+bv blind --message "hello" --server http://localhost:8080
+bv unblind --signature <blind_signature_hex> --id <request_id>
+bv redeem --signature <unblinded_signature_hex> --witness <witness_hex> --class tier_gold --epoch 2026-01
+```
+
+The `blind` command returns JSON with `blinded`, `witness`, and `request_id`. The `verify` command validates a DLEQ proof locally, `unblind` converts a blind signature into an unblinded one using the stored request state, and `redeem` submits the credential to `/v1/credential/consume`.
+
+Client state is persisted to `~/.blindvault/state.json`.
 
 ## Running tests
 

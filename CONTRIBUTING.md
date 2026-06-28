@@ -20,6 +20,7 @@ Thanks for helping improve BlindVault. This guide explains the repository workfl
 go test ./...
 go test -v ./pkg/crypto
 go test -v ./internal/api
+go test -v ./cmd/bv
 ```
 
 Generate crypto vectors when updating protocol or test fixtures:

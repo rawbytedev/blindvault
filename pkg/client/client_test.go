@@ -23,6 +23,7 @@ func TestClient_Blind(t *testing.T) {
 	cli, err := client.NewClient(&client.Config{
 		ServerURL: "http://localhost:8080",
 		DST:       []byte("BCIS-TEST"),
+		HomeDir: home,
 	})
 	require.NoError(t, err)
 

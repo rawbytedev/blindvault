@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"blindvault/internal/api"
@@ -26,6 +27,7 @@ type Client struct {
 type Config struct {
 	ServerURL string
 	DST       []byte
+	HomeDir   string // optional
 }
 
 // NewClient creates a new client.
@@ -33,6 +35,14 @@ func NewClient(cfg *Config) (*Client, error) {
 	state, err := NewState()
 	if err != nil {
 		return nil, err
+	}
+	home := cfg.HomeDir
+	if home == "" {
+		var err error
+		home, err = os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &Client{
 		serverURL: cfg.ServerURL,
