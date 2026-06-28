@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -129,6 +130,7 @@ func (c *Client) Redeem(sig crypto.PointG1, witness crypto.PointG1, class, epoch
 		if err != nil {
 			return false, fmt.Errorf("credential already redeemed: %s", errResp.Error)
 		}
+		return false, errors.New("credential already redeemed")
 	}
 	if resp.StatusCode != 200 {
 		return false, fmt.Errorf("unexpected status: %d", resp.StatusCode)

@@ -172,8 +172,8 @@ func TestClient_RedeemReplay(t *testing.T) {
 	// Mock server returning 409 Conflict
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/credential/consume", func(w http.ResponseWriter, r *http.Request) {
-		err := json.NewEncoder(w).Encode(map[string]string{"error": "credential already redeemed"})
 		w.WriteHeader(http.StatusConflict)
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "credential already redeemed"})
 		if err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
