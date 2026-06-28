@@ -1,5 +1,26 @@
 # BlindVault
 
+<p align="center">
+  <a href="https://github.com/rawbytedev/blindvault/actions/workflows/ci.yml">
+    <img src="https://github.com/rawbytedev/blindvault/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <a href="https://goreportcard.com/report/github.com/rawbytedev/blindvault">
+    <img src="https://goreportcard.com/badge/github.com/rawbytedev/blindvault" alt="Go Report Card" />
+  </a>
+  <a href="https://github.com/rawbytedev/blindvault">
+    <img src="https://img.shields.io/github/go-mod/go-version/rawbytedev/blindvault" alt="Go Version" />
+  </a>
+  <a href="https://github.com/rawbytedev/blindvault">
+    <img src="https://img.shields.io/github/last-commit/rawbytedev/blindvault" alt="GitHub last commit" />
+  </a>
+  <a href="https://github.com/rawbytedev/blindvault/releases/latest">
+    <img src="https://img.shields.io/github/v/release/rawbytedev/blindvault" alt="GitHub Release" />
+  </a>
+  <a href="https://github.com/rawbytedev/blindvault/issues">
+    <img src="https://img.shields.io/github/issues/rawbytedev/blindvault" alt="GitHub issues" />
+  </a>
+</p>
+
 BlindVault is a privacy-preserving credential issuance and redemption service built on BLS12-381 blind signatures and DLEQ proofs.
 
 ## Purpose
