@@ -20,7 +20,7 @@ func fixedSecuredBlind(t *testing.T) *securememory.Enclave {
 }
 
 // Helper to open an enclave, convert to Scalar, and auto-close the buffer
-func scalarFromEnclave(t *testing.T, engine *BLS12Engine, enc *securememory.Enclave) Scalar {
+func scalarFromEnclave(t *testing.T, engine Engine, enc *securememory.Enclave) Scalar {
 	t.Helper()
 	buff, err := enc.Open()
 	if err != nil {
@@ -35,7 +35,7 @@ func scalarFromEnclave(t *testing.T, engine *BLS12Engine, enc *securememory.Encl
 }
 
 // Helper to open an enclave and produce a blinding factor (needs HashTo)
-func blindFromEnclave(t *testing.T, engine *BLS12Engine, enc *securememory.Enclave) Scalar {
+func blindFromEnclave(t *testing.T, engine Engine, enc *securememory.Enclave) Scalar {
 	t.Helper()
 	buff, err := enc.Open()
 	if err != nil {

@@ -10,6 +10,13 @@ import (
 	"blindvault/pkg/crypto"
 )
 
+// redeemCmd handles the "redeem" command, which allows a user to redeem a credential using an unblinded signature and witness point. It takes the following flags:
+// --signature: hex-encoded unblinded signature (required)
+// --witness: hex-encoded witness point (required)
+// --class: credential class (required)
+// --epoch: key epoch (required)
+// --dst: domain separation tag (default: "BCIS-V1-MESSAGE")
+// --server: BlindVault server URL (default: "http://localhost:8080")
 func redeemCmd() {
 	fs := flag.NewFlagSet("redeem", flag.ExitOnError)
 	var (

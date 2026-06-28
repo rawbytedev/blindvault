@@ -10,6 +10,17 @@ import (
 	"blindvault/pkg/crypto"
 )
 
+// verifyCmd handles the "verify" subcommand.
+/* It takes the following flags:
+--blinded: hex-encoded blinded point (required)
+--signature: hex-encoded blind signature (required)
+--public-key: hex-encoded public key (required)
+--proof-r1: hex-encoded R1 (required)
+--proof-r2: hex-encoded R2 (required)
+--proof-s: hex-encoded S (required)
+--proof-c: hex-encoded C (required)
+--dst: domain separation tag (default: "BCIS-V1-MESSAGE")
+--server: BlindVault server URL (default: "http://localhost:8080")*/
 func verifyCmd() {
 	fs := flag.NewFlagSet("verify", flag.ExitOnError)
 	var (

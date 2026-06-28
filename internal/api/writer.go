@@ -12,6 +12,7 @@ type responseWriter struct {
 	written    bool
 }
 
+// newResponseWriter creates a new responseWriter that wraps the given http.ResponseWriter.
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{
 		ResponseWriter: w,

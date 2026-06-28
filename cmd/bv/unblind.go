@@ -10,6 +10,11 @@ import (
 	"blindvault/pkg/crypto"
 )
 
+// unblindCmd handles the "unblind" command, which allows a user to unblind a blind signature using a request ID. It takes the following flags:
+// --signature: hex-encoded blind signature (required)
+// --id: request ID from `bv blind` (required)
+// --dst: domain separation tag (default: "BCIS-V1-MESSAGE")
+// --server: BlindVault server URL (default: "http://localhost:8080")
 func unblindCmd() {
 	fs := flag.NewFlagSet("unblind", flag.ExitOnError)
 	var (

@@ -11,7 +11,7 @@ import (
 )
 
 type CredentialService struct {
-	engine *crypto.BLS12Engine
+	engine crypto.Engine
 	config *Config
 	store  storage.NullifierStore
 }

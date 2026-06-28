@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// statusIssue maps known issue-side errors to HTTP status codes and client messages.
 func statusIssue(err error) (int, string) {
 	if err != nil {
 		// Map known errors to appropriate status codes
@@ -48,6 +49,7 @@ func statusComsume(err error) (int, string) {
 	return http.StatusOK, "success"
 }
 
+// handleIssue handles POST /issue requests.
 func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req IssueRequest
@@ -85,6 +87,7 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleConsume handles POST /consume requests.
 func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req ConsumeRequest
@@ -126,7 +129,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
 }
-
+// metricsHandler serves the Prometheus metrics endpoint.
 func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	s.metrics.MetricsHandler().ServeHTTP(w, r)
 }

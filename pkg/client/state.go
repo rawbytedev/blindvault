@@ -53,6 +53,7 @@ func NewStateWithDir(dir string) (*State, error) {
 	}
 	return s, nil
 }
+// load reads the state from disk.
 func (s *State) load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -63,9 +64,9 @@ func (s *State) load() error {
 	return json.Unmarshal(data, &s.Requests)
 }
 
+// save writes the current state to disk.
+// No need to lock here; caller should hold the lock.
 func (s *State) save() error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	data, err := json.MarshalIndent(s.Requests, "", "  ")
 	if err != nil {
 		return err
@@ -109,6 +110,7 @@ func (s *State) Delete(id string) error {
 	return s.save()
 }
 
+// generateID creates a simple random ID for storing requests.
 func generateID() string {
 	// Simple 8‑character random ID
 	b := make([]byte, 4)

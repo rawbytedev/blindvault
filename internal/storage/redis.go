@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// RedisNullifierStore is a Redis-backed implementation of the NullifierStore interface. It uses Redis to store nullifiers with an expiration time, allowing for efficient checking and storage of nullifiers in a distributed environment.
 type RedisNullifierStore struct {
 	client     *redis.Client
 	ctx        context.Context
@@ -15,6 +16,7 @@ type RedisNullifierStore struct {
 	metrics    metrics.MetricsReporter
 }
 
+// NewRedisNullifierStore creates a new RedisNullifierStore with the given Redis connection parameters and expiration duration for nullifiers.
 func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration, metrics metrics.MetricsReporter) (*RedisNullifierStore, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,

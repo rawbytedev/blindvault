@@ -43,7 +43,7 @@ func generateJWT(secret string) string {
 }
 
 // createBlindedMessage blinds a message for testing.
-func createBlindedMessage(t *testing.T, engine *crypto.BLS12Engine, msg []byte, dst []byte) (blindedHex string, blindFactor crypto.Scalar) {
+func createBlindedMessage(t *testing.T, engine crypto.Engine, msg []byte, dst []byte) (blindedHex string, blindFactor crypto.Scalar) {
 	point, err := engine.HashToCurve(msg, dst)
 	require.NoError(t, err)
 
@@ -56,7 +56,7 @@ func createBlindedMessage(t *testing.T, engine *crypto.BLS12Engine, msg []byte, 
 	return hex.EncodeToString(blinded.Compress()), r
 }
 
-func unblindSignature(t *testing.T, engine *crypto.BLS12Engine, blindSigHex string, r crypto.Scalar) string {
+func unblindSignature(t *testing.T, engine crypto.Engine, blindSigHex string, r crypto.Scalar) string {
 	sigBytes, err := hex.DecodeString(blindSigHex)
 	require.NoError(t, err)
 	sig, err := crypto.DeserializeG1(sigBytes)
@@ -69,7 +69,7 @@ func unblindSignature(t *testing.T, engine *crypto.BLS12Engine, blindSigHex stri
 }
 
 // createWitness returns the G1 point H(msg) as hex.
-func createWitness(t *testing.T, engine *crypto.BLS12Engine, msg []byte, dst []byte) string {
+func createWitness(t *testing.T, engine crypto.Engine, msg []byte, dst []byte) string {
 	point, err := engine.HashToCurve(msg, dst)
 	require.NoError(t, err)
 	return hex.EncodeToString(point.Compress())

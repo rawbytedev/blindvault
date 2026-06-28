@@ -29,6 +29,7 @@ func With(ctx context.Context, fields map[string]any) context.Context {
 	return context.WithValue(ctx, loggerKey, &logger)
 }
 
+// Trace returns a logger event for trace level logging.
 func Trace(ctx context.Context) *zerolog.Event {
 	return FromContext(ctx).Trace()
 }

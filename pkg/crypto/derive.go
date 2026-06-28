@@ -33,7 +33,7 @@ const (
 //   - Purpose isolation (fixed "SIGNING_KEY" tag)
 //   - Lifecycle rotation (epoch)
 //   - Application namespace isolation (credentialClass)
-func DeriveSigningKey(masterSeed []byte, epoch string, credentialClass string) (*BlstScalar, error) {
+func DeriveSigningKey(masterSeed []byte, epoch string, credentialClass string) (Scalar, error) {
 	if len(masterSeed) == 0 {
 		return nil, errors.New("master seed cannot be empty")
 	}
@@ -44,19 +44,16 @@ func DeriveSigningKey(masterSeed []byte, epoch string, credentialClass string) (
 		return nil, errors.New("credential class cannot be empty")
 	}
 
-	// 1. Build the info string with strict hierarchical concatenation.
+	// Build the info string with strict hierarchical concatenation.
 	// Format: "BCIS" + "SIGNING_KEY" + <epoch> + <credentialClass>
 	info := protocolTag + purpose + epoch + credentialClass
 
-	// 2. Initialize HKDF-Expand with the fixed salt.
-	// 3. Extract 64 bytes (twice the size of the BLS12-381 scalar field).
+	// Use HKDF with SHA-256 to derive a 64-byte key from the master seed.
 	hkdf_key, err := hkdf.Key(sha256.New, masterSeed, []byte(salt), info, 64)
 	if err != nil {
 		return nil, err
 	}
-
-	// 4. Safely reduce the 64-byte integer modulo the group order r.
-	//    blst's FromBEndian performs constant-time reduction.
+	// Convert the 64-byte output to a BLS12-381 scalar by reducing modulo r.
 	var sk blst.Scalar
 	sk.FromBEndian(hkdf_key)
 

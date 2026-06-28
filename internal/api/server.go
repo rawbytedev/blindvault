@@ -23,6 +23,7 @@ type Server struct {
 	metrics           metrics.MetricsReporter
 }
 
+// NewServer initializes a new Server with the given configuration, setting up storage, services, and HTTP handlers.
 func NewServer(cfg *service.Config) (*Server, error) {
 	// Init storage
 	var nullifierStore storage.NullifierStore

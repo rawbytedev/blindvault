@@ -16,7 +16,7 @@ import (
 type Client struct {
 	serverURL string
 	dst       []byte
-	engine    *crypto.BLS12Engine
+	engine    crypto.Engine
 	state     *State
 	http      *http.Client
 }

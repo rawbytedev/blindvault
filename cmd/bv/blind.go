@@ -10,6 +10,7 @@ import (
 	"blindvault/pkg/client"
 )
 
+// blindCmd handles the "blind" subcommand.
 func blindCmd() {
 	fs := flag.NewFlagSet("blind", flag.ExitOnError)
 	var (

@@ -6,10 +6,11 @@ import (
 	blst "github.com/supranational/blst/bindings/go"
 )
 
+// BLS12Engine implements the crypto.Engine interface using the BLS12-381 curve and the blst library.
 type BLS12Engine struct {
 }
 
-func NewBLS12Engine() *BLS12Engine {
+func NewBLS12Engine() Engine {
 	return &BLS12Engine{}
 }
 

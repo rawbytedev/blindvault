@@ -49,6 +49,7 @@ func (e *BLS12Engine) DLEQProve(sk Scalar, blinded PointG1, pk PointG2) (*DLEQPr
 		C:  &BlstScalar{inner: c},
 	}, nil
 }
+
 func (e *BLS12Engine) DLEQVerify(proof *DLEQProof, blinded, sig PointG1, pk PointG2) bool {
 	R1 := proof.R1.(*G2Point).inner
 	R2 := proof.R2.(*G1Point).inner
