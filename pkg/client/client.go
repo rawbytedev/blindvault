@@ -125,8 +125,10 @@ func (c *Client) Redeem(sig crypto.PointG1, witness crypto.PointG1, class, epoch
 		var errResp struct {
 			Error string `json:"error"`
 		}
-		json.NewDecoder(resp.Body).Decode(&errResp)
-		return false, fmt.Errorf("credential already redeemed: %s", errResp.Error)
+		err := json.NewDecoder(resp.Body).Decode(&errResp)
+		if err != nil {
+			return false, fmt.Errorf("credential already redeemed: %s", errResp.Error)
+		}
 	}
 	if resp.StatusCode != 200 {
 		return false, fmt.Errorf("unexpected status: %d", resp.StatusCode)

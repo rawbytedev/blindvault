@@ -142,7 +142,11 @@ func TestClient_Redeem(t *testing.T) {
 			http.Error(w, "missing fields", http.StatusBadRequest)
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+		err = json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 	})
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
@@ -169,7 +173,11 @@ func TestClient_RedeemReplay(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/credential/consume", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
-		json.NewEncoder(w).Encode(map[string]string{"error": "credential already redeemed"})
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "credential already redeemed"})
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 	})
 	ts := httptest.NewServer(mux)
 	defer ts.Close()

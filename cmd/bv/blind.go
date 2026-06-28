@@ -50,5 +50,9 @@ func blindCmd() {
 		Witness:   hex.EncodeToString(result.Witness.Compress()),
 		RequestID: result.RequestID,
 	}
-	json.NewEncoder(os.Stdout).Encode(out)
+	err = json.NewEncoder(os.Stdout).Encode(out)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
