@@ -29,10 +29,14 @@ type PendingRequest struct {
 }
 
 // NewState loads or creates a state file in the user's home directory.
-func NewState() (*State, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
+func NewState(HomeDir string) (*State, error) {
+	home := HomeDir
+	if home == "" {
+		var err error
+		home, err = os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return NewStateWithDir(home)
 }
