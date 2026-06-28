@@ -18,7 +18,12 @@ func unblindCmd() {
 		dst       = fs.String("dst", "BCIS-V1-MESSAGE", "domain separation tag")
 		url       = fs.String("server", "http://localhost:8080", "BlindVault server URL")
 	)
-	fs.Parse(os.Args[2:])
+	err := fs.Parse(os.Args[2:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: Unable to parse inputs")
+		fs.Usage()
+		os.Exit(1)
+	}
 	if *sigHex == "" || *requestID == "" {
 		fmt.Fprintln(os.Stderr, "Error: --signature and --id are required")
 		fs.Usage()

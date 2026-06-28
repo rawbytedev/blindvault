@@ -41,7 +41,11 @@ func TestCLIIntegration(t *testing.T) {
 			CredentialClass string `json:"credential_class"`
 		}
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &req)
+		err := json.Unmarshal(body, &req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		lastIssueRequest.Blinded = req.BlindedMessage
 		lastIssueRequest.Class = req.CredentialClass
 
@@ -67,11 +71,19 @@ func TestCLIIntegration(t *testing.T) {
 				"c":  hex.EncodeToString(c[:]),
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	})
 	mux.HandleFunc("/v1/credential/consume", func(w http.ResponseWriter, r *http.Request) {
 		// Accept any request and return valid
-		json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+		err := json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	})
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
@@ -110,7 +122,8 @@ func TestCLIIntegration(t *testing.T) {
 			C  string `json:"c"`
 		} `json:"proof"`
 	}
-	json.NewDecoder(resp.Body).Decode(&issueResp)
+	err = json.NewDecoder(resp.Body).Decode(&issueResp)
+	require.NoError(t, err)
 	resp.Body.Close()
 
 	// Now run verify command with the proof

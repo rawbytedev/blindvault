@@ -153,6 +153,7 @@ func TestClient_Redeem(t *testing.T) {
 	})
 	require.NoError(t, err)
 	sk, err := crypto.NewRandomScalar()
+	require.NoError(t, err, "Error while generating random scalar")
 	// Create dummy points (only checks calls)
 	engine := crypto.NewBLS12Engine()
 	point, _ := engine.HashToCurve([]byte("test"), []byte("BCIS-TEST"))
@@ -180,6 +181,7 @@ func TestClient_RedeemReplay(t *testing.T) {
 	require.NoError(t, err)
 
 	sk, err := crypto.NewRandomScalar()
+	require.NoError(t, err, "Error while generating random scalar")
 	// Create dummy points (only checks calls)
 	engine := crypto.NewBLS12Engine()
 	point, _ := engine.HashToCurve([]byte("test"), []byte("BCIS-TEST"))
