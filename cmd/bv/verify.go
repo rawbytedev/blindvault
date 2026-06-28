@@ -23,7 +23,12 @@ func verifyCmd() {
 		dst     = fs.String("dst", "BCIS-V1-MESSAGE", "domain separation tag")
 		url     = fs.String("server", "http://localhost:8080", "BlindVault server URL")
 	)
-	fs.Parse(os.Args[2:])
+	err := fs.Parse(os.Args[2:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: Unable to parse inputs")
+		fs.Usage()
+		os.Exit(1)
+	}
 	if *blinded == "" || *sig == "" || *pk == "" || *r1 == "" || *r2 == "" || *s == "" || *c == "" {
 		fmt.Fprintln(os.Stderr, "Error: all flags are required")
 		fs.Usage()
