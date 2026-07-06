@@ -780,5 +780,4 @@ func TestIssueRateLimit(t *testing.T) {
 	if rateLimitCount == 0 {
 		t.Error("rate limiter did not reject any requests, expected at least one 429")
 	}
-	// Optionally, we could check that successCount is around 20+some, but not necessary.
 }

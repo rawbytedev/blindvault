@@ -6,15 +6,26 @@ import (
 	blst "github.com/supranational/blst/bindings/go"
 )
 
+type HashToCurveFunc func(data []byte, dst []byte) (PointG1, error)
+
 // BLS12Engine implements the crypto.Engine interface using the BLS12-381 curve and the blst library.
 type BLS12Engine struct {
+	hashToCurve HashToCurveFunc
 }
 
 func NewBLS12Engine() Engine {
-	return &BLS12Engine{}
+	return &BLS12Engine{
+		hashToCurve: defaultHashToCurve,
+	}
 }
 
-func (e *BLS12Engine) HashToCurve(data []byte, dst []byte) (PointG1, error) {
+func NewBLS12EngineWithHash(hashFn HashToCurveFunc) *BLS12Engine {
+	return &BLS12Engine{
+		hashToCurve: hashFn,
+	}
+}
+
+func defaultHashToCurve(data []byte, dst []byte) (PointG1, error) {
 	if dst == nil {
 		return nil, errors.New("dst required")
 	}
@@ -22,6 +33,9 @@ func (e *BLS12Engine) HashToCurve(data []byte, dst []byte) (PointG1, error) {
 	return &G1Point{inner: p}, nil
 }
 
+func (e *BLS12Engine) HashToCurve(data []byte, dst []byte) (PointG1, error) {
+	return e.hashToCurve(data, dst)
+}
 func (e *BLS12Engine) BlindMessage(msg PointG1, r Scalar) (PointG1, error) {
 	p := new(blst.P1)
 	*p = *msg.(*G1Point).inner

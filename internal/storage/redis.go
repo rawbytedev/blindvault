@@ -17,7 +17,7 @@ type RedisNullifierStore struct {
 }
 
 // NewRedisNullifierStore creates a new RedisNullifierStore with the given Redis connection parameters and expiration duration for nullifiers.
-func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration, metrics metrics.MetricsReporter) (*RedisNullifierStore, error) {
+func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration, metrics metrics.MetricsReporter) (NullifierStore, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,

@@ -10,7 +10,7 @@ type InMemoryNullifierStore struct {
 }
 
 // NewInMemoryNullifierStore creates a new in-memory nullifier store.
-func NewInMemoryNullifierStore() *InMemoryNullifierStore {
+func NewInMemoryNullifierStore() NullifierStore {
 	return &InMemoryNullifierStore{
 		store: make(map[string]bool),
 	}
