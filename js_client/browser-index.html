@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BlindVault JS Client SDK</title>
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -69,41 +70,121 @@
         button:hover {
             background: #0056b3;
         }
+
+        .vector-section,
+        .live-section {
+            display: none;
+        }
+
+        .vector-section.visible,
+        .live-section.visible {
+            display: block;
+        }
     </style>
     <script src="./assets/demo.js"></script>
 </head>
 
 <body>
     <h1>BlindVault JS Client SDK - Interactive Demo</h1>
-
-    <div class="demo-section">
-        <h2>Overview</h2>
-        <p>This page demonstrates the blind-signature workflow using the documented crypto vectors from
-            docs/crypto_vectors.md.</p>
+    <div class="card">
+        <h2>Mode Selection</h2>
+        <div class="mode-toggle">
+            <label>
+                <input type="radio" name="mode" value="vector" checked onchange="switchMode('vector')" />
+                📄 Vector Mode (pre‑computed test vectors)
+            </label>
+            <label>
+                <input type="radio" name="mode" value="live" onchange="switchMode('live')" />
+                🌐 Live Mode (your own message & server)
+            </label>
+        </div>
     </div>
+    <!-- ================ VECTOR MODE ================ -->
+    <div id="vector-mode" class="vector-section visible">
+        <div class="demo-section">
+            <h2>Overview</h2>
+            <p>This page demonstrates the blind-signature workflow using the documented crypto vectors from
+                docs/crypto_vectors.md.</p>
+        </div>
 
-    <div class="demo-section">
-        <h2>1. Blind a Message</h2>
-        <button onclick="runBlind()">Run Blind</button>
-        <div id="blind-output"></div>
+        <div class="demo-section">
+            <h2>1. Blind a Message</h2>
+            <button onclick="runBlind()">Run Blind</button>
+            <div id="blind-output"></div>
+        </div>
+
+        <div class="demo-section">
+            <h2>2. Verify DLEQ Proof</h2>
+            <button onclick="runVerify()">Run Verify</button>
+            <div id="verify-output"></div>
+        </div>
+
+        <div class="demo-section">
+            <h2>3. Unblind Signature</h2>
+            <button onclick="runUnblind()">Run Unblind</button>
+            <div id="unblind-output"></div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Complete Workflow</h2>
+            <button onclick="runFullFlow()">Run Full Workflow</button>
+            <div id="full-output"></div>
+        </div>
     </div>
+    <!-- ================ LIVE MODE ================ -->
+    <div id="live-mode" class="live-section">
+        <div class="card">
+            <h2>🛠️ Configuration</h2>
+            <div class="row">
+                <div class="field">
+                    <label for="live-message">Message</label>
+                    <input id="live-message" type="text" value="Hello BlindVault" />
+                </div>
+                <div class="field">
+                    <label for="live-dst">DST</label>
+                    <input id="live-dst" type="text" value="BCIS-V1-MESSAGE" />
+                </div>
+                <div class="field">
+                    <label for="live-server">Server URL</label>
+                    <input id="live-server" type="text" value="http://localhost:8080" />
+                </div>
+                <div class="field">
+                    <label for="live-class">Credential Class</label>
+                    <input id="live-class" type="text" value="test" />
+                </div>
+                <div class="field">
+                    <label for="live-token">Auth Token (JWT)</label>
+                    <input id="live-token" type="text" placeholder="Bearer token (optional)" />
+                </div>
+            </div>
+        </div>
 
-    <div class="demo-section">
-        <h2>2. Verify DLEQ Proof</h2>
-        <button onclick="runVerify()">Run Verify</button>
-        <div id="verify-output"></div>
-    </div>
+        <div class="card">
+            <h2>Step 1: Blind</h2>
+            <button onclick="liveBlind()">🔮 Blind Message</button>
+            <div id="live-blind-output" class="output-box info">Click "Blind Message" to start.</div>
+        </div>
 
-    <div class="demo-section">
-        <h2>3. Unblind Signature</h2>
-        <button onclick="runUnblind()">Run Unblind</button>
-        <div id="unblind-output"></div>
-    </div>
+        <div class="card" id="live-issue-card" style="display:none;">
+            <h2>Step 2: Issue (Server)</h2>
+            <div class="btn-group">
+                <button onclick="liveIssue()">📤 Issue to Server</button>
+                <button onclick="liveVerifyProof()" id="live-verify-btn" disabled>🔍 Verify DLEQ Proof</button>
+            </div>
+            <div id="live-issue-output" class="output-box info">Click "Issue" to send the blinded message.</div>
+        </div>
 
-    <div class="demo-section">
-        <h2>Complete Workflow</h2>
-        <button onclick="runFullFlow()">Run Full Workflow</button>
-        <div id="full-output"></div>
+        <div class="card" id="live-unblind-card" style="display:none;">
+            <h2>Step 3: Unblind</h2>
+            <button onclick="liveUnblind()">🔓 Unblind Signature</button>
+            <div id="live-unblind-output" class="output-box info">Click "Unblind" after issuing.</div>
+        </div>
+
+        <div class="card" id="live-redeem-card" style="display:none;">
+            <h2>Step 4: Redeem</h2>
+            <button onclick="liveRedeem()">✅ Redeem Credential</button>
+            <div id="live-redeem-output" class="output-box info">Click "Redeem" after unblinding.</div>
+        </div>
     </div>
 </body>
 
