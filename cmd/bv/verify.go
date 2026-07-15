@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"blindvault/pkg/client"
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/client"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 // verifyCmd handles the "verify" subcommand.

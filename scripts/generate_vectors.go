@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 const (

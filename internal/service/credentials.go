@@ -1,13 +1,14 @@
 package service
 
 import (
-	"blindvault/pkg/errors"
 	"context"
 	"encoding/hex"
 	"fmt"
 
-	"blindvault/internal/storage"
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/errors"
+
+	"github.com/rawbytedev/blindvault/internal/storage"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 type CredentialService struct {

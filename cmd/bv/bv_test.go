@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 
 	"github.com/stretchr/testify/require"
 )

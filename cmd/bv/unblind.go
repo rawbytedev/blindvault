@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"blindvault/pkg/client"
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/client"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 // unblindCmd handles the "unblind" command, which allows a user to unblind a blind signature using a request ID. It takes the following flags:

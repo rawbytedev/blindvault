@@ -2,10 +2,11 @@
 package api
 
 import (
-	"blindvault/pkg/logger"
 	"context"
 	"encoding/json"
 	"net/http"
+
+	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
 // respondJSON writes a JSON response with the given status code.

@@ -1,4 +1,4 @@
-module blindvault
+module github.com/rawbytedev/blindvault
 
 go 1.26.5
 

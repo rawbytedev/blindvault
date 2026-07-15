@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"blindvault/pkg/client"
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/client"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 // redeemCmd handles the "redeem" command, which allows a user to redeem a credential using an unblinded signature and witness point. It takes the following flags:

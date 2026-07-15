@@ -1,11 +1,12 @@
 package api
 
 import (
-	"blindvault/pkg/logger"
 	"context"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
 type contextKey string

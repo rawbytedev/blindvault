@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"blindvault/pkg/client"
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/client"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func TestClient_Blind(t *testing.T) {
 	cli, err := client.NewClient(&client.Config{
 		ServerURL: "http://localhost:8080",
 		DST:       []byte("BCIS-TEST"),
-		HomeDir: home,
+		HomeDir:   home,
 	})
 	require.NoError(t, err)
 
