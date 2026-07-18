@@ -116,4 +116,6 @@ jobs:
             --title "Release ${{ github.event.inputs.version }}" \
             --draft=${{ github.event.inputs.draft }} \
             --generate-notes \
-            artifacts/**/*
+            artifacts/**/bv-* \
+            artifacts/**/blindvault-* \
+            artifacts/**/*.tgz
