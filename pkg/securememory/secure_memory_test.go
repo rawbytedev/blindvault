@@ -1,9 +1,10 @@
 package securememory_test
 
 import (
-	mem "blindvault/pkg/securememory"
 	"bytes"
 	"testing"
+
+	mem "github.com/rawbytedev/blindvault/pkg/securememory"
 )
 
 func TestLockedBuffer_NewLocked(t *testing.T) {

@@ -2,7 +2,6 @@
 package main
 
 import (
-	"blindvault/pkg/logger"
 	"context"
 	"flag"
 	"os"
@@ -10,8 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"blindvault/internal/api"
-	"blindvault/internal/service"
+	"github.com/rawbytedev/blindvault/pkg/logger"
+
+	"github.com/rawbytedev/blindvault/internal/api"
+	"github.com/rawbytedev/blindvault/internal/service"
 
 	"gopkg.in/yaml.v3"
 )

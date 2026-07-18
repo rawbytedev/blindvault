@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"blindvault/internal/auth"
-	"blindvault/internal/service"
-	"blindvault/internal/storage"
-	"blindvault/pkg/logger"
-	"blindvault/pkg/metrics"
+	"github.com/rawbytedev/blindvault/internal/auth"
+	"github.com/rawbytedev/blindvault/internal/service"
+	"github.com/rawbytedev/blindvault/internal/storage"
+	"github.com/rawbytedev/blindvault/pkg/logger"
+	"github.com/rawbytedev/blindvault/pkg/metrics"
 )
 
 // Server provides the HTTP server, middleware, and credential service for BlindVault.

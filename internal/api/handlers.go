@@ -1,10 +1,11 @@
 package api
 
 import (
-	"blindvault/pkg/logger"
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
 // statusIssue maps known issue-side errors to HTTP status codes and client messages.

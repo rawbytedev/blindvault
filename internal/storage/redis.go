@@ -1,9 +1,10 @@
 package storage
 
 import (
-	"blindvault/pkg/metrics"
 	"context"
 	"time"
+
+	"github.com/rawbytedev/blindvault/pkg/metrics"
 
 	"github.com/redis/go-redis/v9"
 )

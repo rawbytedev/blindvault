@@ -30,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Install cross-compilers
         run: |
@@ -58,9 +58,38 @@ jobs:
           path: |
             bv-*
             blindvault-*
+
+  js-sdk:
+    name: Build JavaScript SDK package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: js_client/package-lock.json
+
+      - name: Install JS dependencies
+        working-directory: js_client
+        run: npm ci
+
+      - name: Build JS SDK package
+        working-directory: js_client
+        run: npm run build:lib && npm pack
+
+      - name: Upload JS SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-sdk-package
+          path: js_client/*.tgz
+
   release:
     name: Create draft release and attach binaries
-    needs: build
+    needs: [build, js-sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: write  # required to create releases
@@ -72,6 +101,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Download JS SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: js-sdk-package
+          path: artifacts/js-sdk
 
       - name: Create Draft Release and Upload Assets
         env:

@@ -1,6 +1,6 @@
-module blindvault
+module github.com/rawbytedev/blindvault
 
-go 1.25.2
+go 1.26.5
 
 require (
 	github.com/awnumar/memguard v0.23.0

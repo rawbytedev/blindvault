@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"blindvault/internal/service"
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/internal/service"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"

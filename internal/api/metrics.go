@@ -2,11 +2,12 @@
 package api
 
 import (
-	"blindvault/pkg/metrics"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/rawbytedev/blindvault/pkg/metrics"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

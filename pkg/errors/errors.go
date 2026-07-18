@@ -1,9 +1,10 @@
 package errors
 
 import (
-	"blindvault/pkg/logger"
 	"context"
 	"fmt"
+
+	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
 // Wrap logs the error and returns a new error with the given message.

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 // State stores pending blinding factors and associated data.

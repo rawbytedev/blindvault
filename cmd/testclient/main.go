@@ -1,7 +1,6 @@
 package main
 
 import (
-	"blindvault/pkg/crypto"
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
@@ -9,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/rawbytedev/blindvault/pkg/crypto"
 
 	"github.com/golang-jwt/jwt/v5"
 )

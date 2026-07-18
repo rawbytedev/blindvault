@@ -1,9 +1,10 @@
 package crypto
 
 import (
-	"blindvault/pkg/securememory"
 	"encoding/hex"
 	"testing"
+
+	"github.com/rawbytedev/blindvault/pkg/securememory"
 )
 
 // ---------- Fixed Test Keys (wrapped in secure enclaves) ----------
