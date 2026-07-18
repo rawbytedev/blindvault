@@ -18,6 +18,52 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 // ------------------------------------------------------------------
+// JWT generation using HMAC-SHA256 (no external library needed)
+// ------------------------------------------------------------------
+async function generateJWT(secret: string, credentialClass: string): Promise<string> {
+  if (!secret) return '';
+
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    sub: credentialClass,
+    iat: now,
+    exp: now + 300, // 5 minutes expiry
+    iss: 'blindvault-client',
+  };
+
+  // Base64URL encode
+  const base64UrlEncode = (obj: object): string => {
+    const json = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(json);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+
+  const headerB64 = base64UrlEncode(header);
+  const payloadB64 = base64UrlEncode(payload);
+  const data = `${headerB64}.${payloadB64}`;
+
+  // Compute HMAC-SHA256 signature
+  const keyData = new TextEncoder().encode(secret);
+  const messageData = new TextEncoder().encode(data);
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  const signatureArray = new Uint8Array(signature);
+  const signatureB64 = btoa(String.fromCharCode(...signatureArray))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  return `${data}.${signatureB64}`;
+}
+// ------------------------------------------------------------------
 // Documented test vectors (from docs/crypto_vectors.md)
 // ------------------------------------------------------------------
 const vectors = {
@@ -196,7 +242,6 @@ export function runFullFlow() {
     }
   }
 }
-
 // ------------------------------------------------------------------
 // Live mode state & functions
 // ------------------------------------------------------------------
@@ -209,6 +254,7 @@ interface LiveState {
   keyEpoch?: string;
   proof?: { r1: Uint8Array; r2: Uint8Array; s: Uint8Array; c: Uint8Array };
   unblinded?: Uint8Array;
+  jwtToken?: string;
 }
 
 const liveState: LiveState = {};
@@ -220,15 +266,26 @@ function getLiveInputs() {
     server: (document.getElementById('live-server') as HTMLInputElement).value,
     credentialClass: (document.getElementById('live-class') as HTMLInputElement).value,
     token: (document.getElementById('live-token') as HTMLInputElement).value,
+    secret: (document.getElementById('live-secret') as HTMLInputElement).value,
   };
 }
 
 // Expose globally for onclick handlers
-export function liveBlind() {
+export async function liveBlind() {
   try {
-    const { message, dst } = getLiveInputs();
+    const { message, dst, secret, credentialClass } = getLiveInputs();
     const msg = new TextEncoder().encode(message);
     const encDst = new TextEncoder().encode(dst);
+
+    // Generate JWT from secret if provided and no token is manually entered
+    const tokenInput = document.getElementById('live-token') as HTMLInputElement;
+    if (secret && !tokenInput.value) {
+      const jwt = await generateJWT(secret, credentialClass);
+      tokenInput.value = jwt;
+      liveState.jwtToken = jwt;
+    } else if (tokenInput.value) {
+      liveState.jwtToken = tokenInput.value;
+    }
 
     const result = blind(msg, encDst);
     liveState.blinded = result.blinded;
@@ -248,6 +305,7 @@ export function liveBlind() {
       blinded (hex): ${bytesToHex(result.blinded)}<br/>
       witness (hex): ${bytesToHex(result.witness)}<br/>
       blindingFactor (hex): ${bytesToHex(result.blindingFactor)}<br/>
+      ${liveState.jwtToken ? '🔑 JWT token generated from shared secret' : ''}
       <span class="status-badge success">Ready to issue</span>
     `;
   } catch (err) {
@@ -263,6 +321,9 @@ export async function liveIssue() {
     const { server, credentialClass, token } = getLiveInputs();
     if (!credentialClass) throw new Error('Credential class is required');
 
+    // Use the generated JWT if available, otherwise use the token input
+    const authToken = liveState.jwtToken || token;
+
     const url = server + '/v1/credential/issue';
     const body = JSON.stringify({
       blinded_message: bytesToHex(liveState.blinded),
@@ -270,8 +331,8 @@ export async function liveIssue() {
     });
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) {
-      headers['Authorization'] = token.startsWith('Bearer ') ? token : 'Bearer ' + token;
+    if (authToken) {
+      headers['Authorization'] = authToken.startsWith('Bearer ') ? authToken : 'Bearer ' + authToken;
     }
 
     const response = await fetch(url, { method: 'POST', headers, body });
@@ -372,8 +433,11 @@ export async function liveRedeem() {
     if (!liveState.unblinded || !liveState.witness || !liveState.keyEpoch) {
       throw new Error('Missing data. Please unblind first.');
     }
-    const { server, credentialClass } = getLiveInputs();
+    const { server, credentialClass, token } = getLiveInputs();
     if (!credentialClass) throw new Error('Credential class is required');
+
+    // Use the generated JWT if available
+    const authToken = liveState.jwtToken || token;
 
     const url = server + '/v1/credential/consume';
     const body = JSON.stringify({
@@ -383,11 +447,12 @@ export async function liveRedeem() {
       key_epoch: liveState.keyEpoch,
     });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authToken) {
+      headers['Authorization'] = authToken.startsWith('Bearer ') ? authToken : 'Bearer ' + authToken;
+    }
+
+    const response = await fetch(url, { method: 'POST', headers, body });
 
     let success = false;
     let msg = '';
