@@ -154,9 +154,11 @@ func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 
 	err := s.revocationStore.RevokeClass(req.CredentialClass, req.KeyEpoch, req.Reason, adminID, req.RevokedUntil)
 	if err != nil {
+		s.metrics.RecordRevocation("failure", req.CredentialClass)
 		s.respondError(ctx, w, http.StatusInternalServerError, "revocation failed: "+err.Error())
 		return
 	}
+	s.metrics.RecordRevocation("success", req.CredentialClass)
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "revoked"})
 }
 
@@ -178,9 +180,11 @@ func (s *Server) handleAdminUnrevoke(w http.ResponseWriter, r *http.Request) {
 
 	err := s.revocationStore.UnrevokeClass(req.CredentialClass, req.KeyEpoch)
 	if err != nil {
+		s.metrics.RecordUnrevocation("failure", req.CredentialClass)
 		s.respondError(ctx, w, http.StatusInternalServerError, "unrevoke failed: "+err.Error())
 		return
 	}
+	s.metrics.RecordUnrevocation("success", req.CredentialClass)
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "unrevoked"})
 }
 

@@ -14,7 +14,6 @@ type RedisNullifierStore struct {
 	client     *redis.Client
 	ctx        context.Context
 	expiration time.Duration
-	metrics    metrics.MetricsReporter
 }
 
 func NewRedisNullifierStoreWithClient(client *redis.Client, expiration time.Duration, metrics metrics.MetricsReporter) NullifierStore {
@@ -22,12 +21,11 @@ func NewRedisNullifierStoreWithClient(client *redis.Client, expiration time.Dura
 		client:     client,
 		ctx:        context.Background(),
 		expiration: expiration,
-		metrics:    metrics,
 	}
 }
 
 // NewRedisNullifierStore creates a new RedisNullifierStore with the given Redis connection parameters and expiration duration for nullifiers.
-func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration, metrics metrics.MetricsReporter) (NullifierStore, error) {
+func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration) (NullifierStore, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -43,7 +41,6 @@ func NewRedisNullifierStore(addr, password string, db int, expiration time.Durat
 		client:     client,
 		ctx:        ctx,
 		expiration: expiration,
-		metrics:    metrics,
 	}, nil
 }
 
@@ -54,13 +51,11 @@ func (s *RedisNullifierStore) CheckAndStore(nullifier []byte) (bool, error) {
 	// Returns true if set, false if already exists.
 	ok, err := s.client.SetNX(s.ctx, key, "1", s.expiration).Result()
 	if err != nil {
-		s.metrics.RecordNullifierStore("setnx", "failure")
 		return false, err
 	}
 
 	// ok is true → nullifier is new (first redemption)
 	// ok is false → nullifier already exists (replay attempt)
-	s.metrics.RecordNullifierStore("setnx", "success")
 	return ok, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/rawbytedev/blindvault/pkg/errors"
+	"github.com/rawbytedev/blindvault/pkg/metrics"
 
 	"github.com/rawbytedev/blindvault/internal/storage"
 	"github.com/rawbytedev/blindvault/pkg/crypto"
@@ -16,6 +17,7 @@ type CredentialService struct {
 	config          *Config
 	store           storage.NullifierStore
 	revocationStore storage.RevocationStore
+	metrics         metrics.MetricsReporter
 }
 
 func (s *CredentialService) Close() error {
@@ -165,12 +167,15 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 	nullifier := crypto.ComputeNullifier(epoch, class, sig)
 	isNew, err := s.store.CheckAndStore(nullifier)
 	if err != nil {
+		s.metrics.RecordNullifierStore("failure", err.Error())
 		return nil, fmt.Errorf("nullifier store error: %w", err)
 	}
 
 	if !isNew {
+		s.metrics.RecordNullifierStore("success: duplicate", "Already redeemed")
 		return &ConsumeResult{Valid: false, Error: "credential already redeemed"}, nil
 	}
+	s.metrics.RecordNullifierStore("success", "Unique")
 
 	return &ConsumeResult{Valid: true}, nil
 }
