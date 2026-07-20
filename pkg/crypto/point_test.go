@@ -80,3 +80,20 @@ func TestVerifyRejectsInvalidSubgroupSecured(t *testing.T) {
 		t.Fatal("Valid signature rejected")
 	}
 }
+
+func TestVerifyPoint(t *testing.T) {
+	engine := NewBLS12Engine()
+	sk, _ := NewRandomScalar()
+	pk := sk.PubKey()
+	msg := []byte("test")
+	dst := []byte("BCIS-TEST")
+	point, _ := engine.HashToCurve(msg, dst)
+	sig, _ := engine.SignBlinded(point, sk)
+
+	valid := engine.VerifyPoint(sig, point, pk)
+	require.True(t, valid)
+
+	wrongPoint, _ := engine.HashToCurve([]byte("wrong"), dst)
+	valid = engine.VerifyPoint(sig, wrongPoint, pk)
+	require.False(t, valid)
+}

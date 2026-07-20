@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,4 +100,16 @@ func TestWithLoggerInContext(t *testing.T) {
 
 	require.Equal(t, "test", logEntry["component"])
 	require.Equal(t, "hello", logEntry["message"])
+}
+
+func TestWithLoggerRequestID(t *testing.T) {
+	ctx := context.Background()
+	ctx, reqID := WithRequestID(ctx)
+	Info(ctx).Msg("hello12")
+	assert.NotEmpty(t, reqID)
+	ctx = context.WithValue(context.Background(), requestIDKey, "123")
+	ctx, reqID = WithRequestID(ctx)
+	assert.Equal(t, reqID, "123")
+	Info(ctx).Msg("hello")
+
 }

@@ -12,23 +12,30 @@ import (
 )
 
 type CredentialService struct {
-	engine crypto.Engine
-	config *Config
-	store  storage.NullifierStore
+	engine          crypto.Engine
+	config          *Config
+	store           storage.NullifierStore
+	revocationStore storage.RevocationStore
 }
 
 func (s *CredentialService) Close() error {
-	if s.store != nil {
-		return s.store.Close()
+	if err := s.store.Close(); err != nil {
+		return err
+	}
+	if s.config.RevocationRedisAddr != "" {
+		if err := s.revocationStore.Close(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func NewCredentialService(cfg *Config, store storage.NullifierStore) *CredentialService {
+func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore) *CredentialService {
 	return &CredentialService{
-		engine: crypto.NewBLS12Engine(),
-		config: cfg,
-		store:  store,
+		engine:          crypto.NewBLS12Engine(),
+		config:          cfg,
+		store:           store,
+		revocationStore: revocationStore,
 	}
 }
 
@@ -102,6 +109,19 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 	// 2. Verify epoch is supported
 	if !s.config.IsEpochSupported(epoch) {
 		return nil, errors.New(ctx, "unsupported key_epoch")
+	}
+	if s.revocationStore != nil {
+		revoked, entry, err := s.revocationStore.IsRevoked(class, epoch)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, "revocation check failed")
+		}
+		if revoked {
+			msg := "credential class revoked"
+			if entry != nil && entry.Reason != "" {
+				msg += ": " + entry.Reason
+			}
+			return &ConsumeResult{Valid: false, Error: msg}, nil
+		}
 	}
 
 	// 3. Decode signature and witness

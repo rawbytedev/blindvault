@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
@@ -28,7 +29,7 @@ func statusIssue(err error) (int, string) {
 }
 
 // statusConsume maps known consume-side errors to HTTP status codes and client messages.
-func statusComsume(err error) (int, string) {
+func statusConsume(err error) (int, string) {
 	if err != nil {
 		// Map known errors to appropriate status codes
 		switch {
@@ -107,7 +108,7 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.credentialService.Consume(ctx, req.UnblindedSignature, req.Witness, req.CredentialClass, req.KeyEpoch)
 	if err != nil {
-		statusCode, message := statusComsume(err)
+		statusCode, message := statusConsume(err)
 		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
 		s.respondError(ctx, w, statusCode, message)
 		return
@@ -123,6 +124,77 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	}
 	s.metrics.RecordConsumption("success", req.CredentialClass, req.KeyEpoch)
 	s.respondJSON(ctx, w, http.StatusOK, ConsumeResponse{Valid: true})
+}
+
+// handleAdminRevoke handles POST /v1/admin/revoke
+func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
+	// Only allow authenticated admins (use stronger auth than JWT)
+	// use the same JWT but with admin scope for now
+	ctx := r.Context()
+	var req struct {
+		CredentialClass string     `json:"credential_class"`
+		KeyEpoch        string     `json:"key_epoch,omitempty"`
+		Reason          string     `json:"reason"`
+		RevokedUntil    *time.Time `json:"revoked_until,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.respondError(ctx, w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	if req.CredentialClass == "" {
+		s.respondError(ctx, w, http.StatusBadRequest, "credential_class required")
+		return
+	}
+	if req.Reason == "" {
+		s.respondError(ctx, w, http.StatusBadRequest, "reason required")
+		return
+	}
+	// Get admin identity from context (set by admin auth middleware)
+	adminID := r.Context().Value(adminKey).(string)
+
+	err := s.revocationStore.RevokeClass(req.CredentialClass, req.KeyEpoch, req.Reason, adminID, req.RevokedUntil)
+	if err != nil {
+		s.respondError(ctx, w, http.StatusInternalServerError, "revocation failed: "+err.Error())
+		return
+	}
+	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "revoked"})
+}
+
+// handleAdminUnrevoke handles DELETE /v1/admin/revoke
+func (s *Server) handleAdminUnrevoke(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req struct {
+		CredentialClass string `json:"credential_class"`
+		KeyEpoch        string `json:"key_epoch,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.respondError(ctx, w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	if req.CredentialClass == "" {
+		s.respondError(ctx, w, http.StatusBadRequest, "credential_class required")
+		return
+	}
+
+	err := s.revocationStore.UnrevokeClass(req.CredentialClass, req.KeyEpoch)
+	if err != nil {
+		s.respondError(ctx, w, http.StatusInternalServerError, "unrevoke failed: "+err.Error())
+		return
+	}
+	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "unrevoked"})
+}
+
+// handleAdminListRevocations handles GET /v1/admin/revocations
+func (s *Server) handleAdminListRevocations(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	entries, err := s.revocationStore.ListRevocations()
+	if err != nil {
+		s.respondError(ctx, w, http.StatusInternalServerError, "list failed: "+err.Error())
+		return
+	}
+	s.respondJSON(ctx, w, http.StatusOK, map[string]interface{}{
+		"revocations": entries,
+	})
 }
 
 // handleHealth handles GET /health

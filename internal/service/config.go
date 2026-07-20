@@ -18,12 +18,15 @@ type Config struct {
 
 	// Authentication
 	AuthSecret string `yaml:"auth_secret" env:"AUTH_SECRET"`
-
 	// Storage
 	RedisAddr       string `yaml:"redis_addr" env:"REDIS_ADDR"`
 	RedisPassword   string `yaml:"redis_password" env:"REDIS_PASSWORD"`
 	RedisDB         int    `yaml:"redis_db" env:"REDIS_DB" default:"0"`
 	RedisExpiration int    `yaml:"redis_expiration" env:"REDIS_EXPIRATION" default:"2592000"` // 30 days in seconds
+	// revocation storage
+	RevocationRedisAddr     string `yaml:"revocation_redis_addr" env:"REVOCATION_REDIS_ADDR"`
+	RevocationRedisPassword string `yaml:"revocation_redis_password" env:"REVOCATION_REDIS_PASSWORD"`
+	RevocationRedisDB       int    `yaml:"revocation_redis_db" env:"REVOCATION_REDIS_DB" default:"1"`
 	// Use in-memory store (for testing only)
 	UseMemoryStore bool `yaml:"use_memory_store" env:"USE_MEMORY_STORE" default:"false"`
 }
