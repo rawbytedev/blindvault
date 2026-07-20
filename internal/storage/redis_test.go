@@ -17,11 +17,6 @@ func TestRedisNullifierStore(t *testing.T) {
 	if err := client.Ping(context.Background()).Err(); err != nil {
 		t.Skip("Redis not available, skipping test")
 	}
-	defer func() {
-		if err := client.FlushDB(context.Background()).Err(); err != nil {
-			t.Fatal("Flush Failed %w", err)
-		}
-	}()
 	defer client.Close()
 
 	// metrics can be nil for testing

@@ -25,11 +25,6 @@ func TestRevocationStore(t *testing.T) {
 		if err := client.Ping(context.Background()).Err(); err != nil {
 			t.Skip("Redis not available, skipping Redis tests")
 		}
-		defer func() {
-			if err := client.FlushDB(context.Background()).Err(); err != nil {
-				t.Fatal("Flush Failed %w", err)
-			}
-		}()
 		defer client.Close()
 
 		store := NewRedisRevocationStore(client)
@@ -167,11 +162,6 @@ func TestRevocationStoreConcurrency(t *testing.T) {
 		if err := client.Ping(context.Background()).Err(); err != nil {
 			t.Skip("Redis not available")
 		}
-		defer func() {
-			if err := client.FlushDB(context.Background()).Err(); err != nil {
-				t.Fatal("Flush Failed %w", err)
-			}
-		}()
 		defer client.Close()
 
 		store := NewRedisRevocationStore(client)
