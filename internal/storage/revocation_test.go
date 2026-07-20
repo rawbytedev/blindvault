@@ -25,7 +25,11 @@ func TestRevocationStore(t *testing.T) {
 		if err := client.Ping(context.Background()).Err(); err != nil {
 			t.Skip("Redis not available, skipping Redis tests")
 		}
-		defer client.FlushDB(context.Background()).Err()
+		defer func() {
+			if err := client.FlushDB(context.Background()).Err(); err != nil {
+				t.Fatal("Flush Failed %w", err)
+			}
+		}()
 		defer client.Close()
 
 		store := NewRedisRevocationStore(client)
@@ -46,7 +50,7 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 
 	t.Run("Revoke and Check", func(t *testing.T) {
 		// Initially not revoked
-		revoked, entry, err := store.IsRevoked(class, epoch)
+		revoked, _, err := store.IsRevoked(class, epoch)
 		require.NoError(t, err)
 		require.False(t, revoked)
 
@@ -55,7 +59,7 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		require.NoError(t, err)
 
 		// Now revoked
-		revoked, entry, err = store.IsRevoked(class, epoch)
+		revoked, entry, err := store.IsRevoked(class, epoch)
 		require.NoError(t, err)
 		require.True(t, revoked)
 		require.Equal(t, class, entry.CredentialClass)
@@ -163,7 +167,11 @@ func TestRevocationStoreConcurrency(t *testing.T) {
 		if err := client.Ping(context.Background()).Err(); err != nil {
 			t.Skip("Redis not available")
 		}
-		defer client.FlushDB(context.Background()).Err()
+		defer func() {
+			if err := client.FlushDB(context.Background()).Err(); err != nil {
+				t.Fatal("Flush Failed %w", err)
+			}
+		}()
 		defer client.Close()
 
 		store := NewRedisRevocationStore(client)
