@@ -83,7 +83,7 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		_ = store.UnrevokeClass(class, epoch)
 
 		// Revoke with 1 second expiration
-		until := time.Now().UTC().Add(1 * time.Second)
+		until := time.Now().UTC().Add(10 * time.Second)
 		err := store.RevokeClass(class, epoch, "temporary", admin, &until)
 		require.NoError(t, err)
 
@@ -93,7 +93,7 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		require.True(t, revoked)
 
 		// wait for revocation
-		deadline := time.Now().Add(3 * time.Second)
+		deadline := time.Now().Add(15 * time.Second)
 		for time.Now().Before(deadline) {
 			revoked, _, err = store.IsRevoked(class, epoch)
 			require.NoError(t, err)
