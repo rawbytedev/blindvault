@@ -82,7 +82,7 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 
 	t.Run("Revoke with Expiration", func(t *testing.T) {
 		_ = store.UnrevokeClass(class, re_epoch)
-
+		_ = store.UnrevokeClass(class, "")
 		// Revoke with 1 second expiration
 		until := time.Now().UTC().Add(10 * time.Second)
 		err := store.RevokeClass(class, re_epoch, "temporary", admin, &until)
@@ -97,23 +97,16 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 			require.NoError(t, err)
 			t.Logf("Raw JSON from Redis: %s", raw)
 		}
-		var entry *RevocationEntry
 		// wait for revocation
 		deadline := time.Now().Add(15 * time.Second)
 		for time.Now().Before(deadline) {
-			revoked, entry, err = store.IsRevoked(class, re_epoch)
+			revoked, _, err = store.IsRevoked(class, re_epoch)
 			require.NoError(t, err)
 			if !revoked {
 				break
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
-		if entry != nil {
-			t.Logf("Entry RevokedUntil: %v", entry.RevokedUntil)
-		} else {
-			t.Log("Entry is nil")
-		}
-		require.False(t, revoked, "key should have expired")
 		// Now not revoked (expired)
 		revoked, _, err = store.IsRevoked(class, re_epoch)
 		require.NoError(t, err)
