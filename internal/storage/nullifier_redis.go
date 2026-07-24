@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/rawbytedev/blindvault/pkg/metrics"
-
 	"github.com/redis/go-redis/v9"
 )
 
@@ -16,7 +14,7 @@ type RedisNullifierStore struct {
 	expiration time.Duration
 }
 
-func NewRedisNullifierStoreWithClient(client *redis.Client, expiration time.Duration, metrics metrics.MetricsReporter) NullifierStore {
+func NewRedisNullifierStoreWithClient(client *redis.Client, expiration time.Duration) NullifierStore {
 	return &RedisNullifierStore{
 		client:     client,
 		ctx:        context.Background(),

@@ -38,7 +38,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		nullifierStore = storage.NewRedisNullifierStoreWithClient(redisClient, time.Duration(cfg.RedisExpiration), metrics)
+		nullifierStore = storage.NewRedisNullifierStoreWithClient(redisClient, time.Duration(cfg.RedisExpiration))
 		// Revocation store: use separate Redis if configured, otherwise reuse main client
 		if cfg.RevocationRedisAddr != "" {
 			revClient, err := storage.NewRedisClient(cfg.RevocationRedisAddr, cfg.RevocationRedisPassword, cfg.RevocationRedisDB)
@@ -50,7 +50,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 			revocationStore = storage.NewRedisRevocationStore(redisClient)
 		}
 	}
-	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore)
+	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore, metrics)
 	jwtValidator := auth.NewJWTValidator(cfg.AuthSecret)
 	rateLimiter := NewRateLimiter(100, 20)
 

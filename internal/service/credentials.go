@@ -32,12 +32,13 @@ func (s *CredentialService) Close() error {
 	return nil
 }
 
-func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore) *CredentialService {
+func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore, metrics metrics.MetricsReporter) *CredentialService {
 	return &CredentialService{
 		engine:          crypto.NewBLS12Engine(),
 		config:          cfg,
 		store:           store,
 		revocationStore: revocationStore,
+		metrics:         metrics,
 	}
 }
 
@@ -167,17 +168,24 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 	nullifier := crypto.ComputeNullifier(epoch, class, sig)
 	isNew, err := s.store.CheckAndStore(nullifier)
 	if err != nil {
-		s.metrics.RecordNullifierStore("failure", err.Error())
+		s.nullifierstore("failure", err.Error())
 		return nil, fmt.Errorf("nullifier store error: %w", err)
 	}
 
 	if !isNew {
-		s.metrics.RecordNullifierStore("success: duplicate", "Already redeemed")
+		s.nullifierstore("success: duplicate", "Already redeemed")
 		return &ConsumeResult{Valid: false, Error: "credential already redeemed"}, nil
 	}
-	s.metrics.RecordNullifierStore("success", "Unique")
+	s.nullifierstore("success", "Unique")
 
 	return &ConsumeResult{Valid: true}, nil
+}
+
+// Helper
+func (s *CredentialService) nullifierstore(ops, result string) {
+	if s.metrics != nil {
+		s.metrics.RecordNullifierStore(ops, result)
+	}
 }
 
 // ----- Result Types -----

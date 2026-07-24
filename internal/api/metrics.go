@@ -81,6 +81,20 @@ func NewMetricsCollector() metrics.MetricsReporter {
 			},
 			[]string{"operation", "result"},
 		),
+		revocationOps: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "blindvault_revocation_operations_total",
+				Help: "Total number of revocation operations",
+			},
+			[]string{"result", "credential_class"},
+		),
+		unrevocationOps: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "blindvault_Unrevocation_operations_total",
+				Help: "Total number of Unrevocation operations",
+			},
+			[]string{"result", "credential_class"},
+		),
 	}
 	// Register all metrics with Prometheus
 	prometheus.MustRegister(
@@ -89,6 +103,8 @@ func NewMetricsCollector() metrics.MetricsReporter {
 		m.credentialIssuance,
 		m.credentialConsumption,
 		m.nullifierStoreOps,
+		m.revocationOps,
+		m.unrevocationOps,
 	)
 
 	return m

@@ -21,7 +21,7 @@ func TestCredentialService_Consume_Revoked(t *testing.T) {
 
 	nullifierStore := storage.NewInMemoryNullifierStore()
 	revocationStore := storage.NewInMemoryRevocationStore()
-	svc := NewCredentialService(cfg, nullifierStore, revocationStore)
+	svc := NewCredentialService(cfg, nullifierStore, revocationStore, nil)
 
 	// Issue a valid credential
 	engine := crypto.NewBLS12Engine()
@@ -67,7 +67,7 @@ func TestCredentialService_Close(t *testing.T) {
 	}
 	nullifierStore := storage.NewInMemoryNullifierStore()
 	revocationStore := storage.NewInMemoryRevocationStore()
-	svc := NewCredentialService(cfg, nullifierStore, revocationStore)
+	svc := NewCredentialService(cfg, nullifierStore, revocationStore, nil)
 
 	err := svc.Close()
 	require.NoError(t, err)
