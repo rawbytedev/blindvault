@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rawbytedev/blindvault/pkg/logger"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -65,6 +66,7 @@ func (s *RedisRevocationStore) RevokeClass(class, epoch, reason, revokedBy strin
 		}
 	} else {
 		ttl = 0 // no expiration (permanent)
+		logger.Info(context.Background()).Msg("No TTL")
 	}
 
 	return s.client.Set(s.ctx, key, data, ttl).Err()
