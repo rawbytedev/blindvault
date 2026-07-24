@@ -96,15 +96,21 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 			require.NoError(t, err)
 			t.Logf("Redis TTL: %v", ttl)
 		}
+		var entry *RevocationEntry
 		// wait for revocation
 		deadline := time.Now().Add(15 * time.Second)
 		for time.Now().Before(deadline) {
-			revoked, _, err = store.IsRevoked(class, epoch)
+			revoked, entry, err = store.IsRevoked(class, epoch)
 			require.NoError(t, err)
 			if !revoked {
 				break
 			}
 			time.Sleep(100 * time.Millisecond)
+		}
+		if entry != nil {
+			t.Logf("Entry RevokedUntil: %v", entry.RevokedUntil)
+		} else {
+			t.Log("Entry is nil")
 		}
 		require.False(t, revoked, "key should have expired")
 		// Now not revoked (expired)
