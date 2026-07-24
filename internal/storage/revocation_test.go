@@ -92,9 +92,9 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		require.NoError(t, err)
 		require.True(t, revoked)
 		if rstore, ok := store.(*RedisRevocationStore); ok {
-			ttl, err := rstore.client.TTL(rstore.ctx, rstore.revocationKey(class, epoch)).Result()
+			raw, err := rstore.client.Get(rstore.ctx, rstore.revocationKey(class, epoch)).Result()
 			require.NoError(t, err)
-			t.Logf("Redis TTL: %v", ttl)
+			t.Logf("Raw JSON from Redis: %s", raw)
 		}
 		var entry *RevocationEntry
 		// wait for revocation
