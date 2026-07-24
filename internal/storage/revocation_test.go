@@ -91,7 +91,11 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		revoked, _, err := store.IsRevoked(class, epoch)
 		require.NoError(t, err)
 		require.True(t, revoked)
-
+		if rstore, ok := store.(*RedisRevocationStore); ok {
+			ttl, err := rstore.client.TTL(rstore.ctx, rstore.revocationKey(class, epoch)).Result()
+			require.NoError(t, err)
+			t.Logf("Redis TTL: %v", ttl)
+		}
 		// wait for revocation
 		deadline := time.Now().Add(15 * time.Second)
 		for time.Now().Before(deadline) {
