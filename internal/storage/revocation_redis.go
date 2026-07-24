@@ -78,6 +78,9 @@ func (s *RedisRevocationStore) IsRevoked(class, epoch string) (bool, *Revocation
 	if err == nil {
 		var entry RevocationEntry
 		if err := json.Unmarshal(data, &entry); err == nil {
+			if entry.RevokedUntil != nil && time.Now().UTC().After(*entry.RevokedUntil) {
+				return false, nil, nil
+			}
 			return true, &entry, nil
 		}
 	}
