@@ -92,9 +92,17 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		require.NoError(t, err)
 		require.True(t, revoked)
 
-		// Wait for expiration
-		time.Sleep(1100 * time.Millisecond)
-
+		// wait for revocation
+		deadline := time.Now().Add(3 * time.Second)
+		for time.Now().Before(deadline) {
+			revoked, _, err = store.IsRevoked(class, epoch)
+			require.NoError(t, err)
+			if !revoked {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		require.False(t, revoked, "key should have expired")
 		// Now not revoked (expired)
 		revoked, _, err = store.IsRevoked(class, epoch)
 		require.NoError(t, err)
