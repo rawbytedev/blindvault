@@ -6,29 +6,39 @@ import (
 	"fmt"
 
 	"github.com/rawbytedev/blindvault/pkg/errors"
+	"github.com/rawbytedev/blindvault/pkg/metrics"
 
 	"github.com/rawbytedev/blindvault/internal/storage"
 	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
 
 type CredentialService struct {
-	engine crypto.Engine
-	config *Config
-	store  storage.NullifierStore
+	engine          crypto.Engine
+	config          *Config
+	store           storage.NullifierStore
+	revocationStore storage.RevocationStore
+	metrics         metrics.MetricsReporter
 }
 
 func (s *CredentialService) Close() error {
-	if s.store != nil {
-		return s.store.Close()
+	if err := s.store.Close(); err != nil {
+		return err
+	}
+	if s.config.RevocationRedisAddr != "" {
+		if err := s.revocationStore.Close(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func NewCredentialService(cfg *Config, store storage.NullifierStore) *CredentialService {
+func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore, metrics metrics.MetricsReporter) *CredentialService {
 	return &CredentialService{
-		engine: crypto.NewBLS12Engine(),
-		config: cfg,
-		store:  store,
+		engine:          crypto.NewBLS12Engine(),
+		config:          cfg,
+		store:           store,
+		revocationStore: revocationStore,
+		metrics:         metrics,
 	}
 }
 
@@ -103,6 +113,19 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 	if !s.config.IsEpochSupported(epoch) {
 		return nil, errors.New(ctx, "unsupported key_epoch")
 	}
+	if s.revocationStore != nil {
+		revoked, entry, err := s.revocationStore.IsRevoked(class, epoch)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, "revocation check failed")
+		}
+		if revoked {
+			msg := "credential class revoked"
+			if entry != nil && entry.Reason != "" {
+				msg += ": " + entry.Reason
+			}
+			return &ConsumeResult{Valid: false, Error: msg}, nil
+		}
+	}
 
 	// 3. Decode signature and witness
 	sigBytes, err := hex.DecodeString(sigHex)
@@ -145,14 +168,24 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 	nullifier := crypto.ComputeNullifier(epoch, class, sig)
 	isNew, err := s.store.CheckAndStore(nullifier)
 	if err != nil {
+		s.nullifierstore("failure", err.Error())
 		return nil, fmt.Errorf("nullifier store error: %w", err)
 	}
 
 	if !isNew {
+		s.nullifierstore("success: duplicate", "Already redeemed")
 		return &ConsumeResult{Valid: false, Error: "credential already redeemed"}, nil
 	}
+	s.nullifierstore("success", "Unique")
 
 	return &ConsumeResult{Valid: true}, nil
+}
+
+// Helper
+func (s *CredentialService) nullifierstore(ops, result string) {
+	if s.metrics != nil {
+		s.metrics.RecordNullifierStore(ops, result)
+	}
 }
 
 // ----- Result Types -----

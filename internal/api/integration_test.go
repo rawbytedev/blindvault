@@ -781,3 +781,159 @@ func TestIssueRateLimit(t *testing.T) {
 		t.Error("rate limiter did not reject any requests, expected at least one 429")
 	}
 }
+
+func TestAdminRevoke(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	// Create an admin JWT
+	adminToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":   "admin",
+		"admin": true,
+	})
+	adminTokenString, _ := adminToken.SignedString([]byte(cfg.AuthSecret))
+
+	// Regular user token (should fail)
+	userToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "user",
+	})
+	userTokenString, _ := userToken.SignedString([]byte(cfg.AuthSecret))
+
+	t.Run("admin can revoke", func(t *testing.T) {
+		revokeBody := map[string]string{
+			"credential_class": "test_class",
+			"reason":           "test revocation",
+		}
+		body, _ := json.Marshal(revokeBody)
+		resp, err := makeRequest(ts, "POST", "/v1/admin/revoke", body, "Bearer "+adminTokenString)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Verify revocation worked by issuing and consuming
+		engine := crypto.NewBLS12Engine()
+		msg := []byte("test message")
+		dst := []byte(cfg.DST)
+		blindedHex, r := createBlindedMessage(t, engine, msg, dst)
+
+		issueReq := IssueRequest{
+			BlindedMessage:  blindedHex,
+			CredentialClass: "test_class",
+		}
+		issueBody, _ := json.Marshal(issueReq)
+		issueResp, err := makeRequest(ts, "POST", "/v1/credential/issue", issueBody, "Bearer "+adminTokenString)
+		require.NoError(t, err)
+		defer issueResp.Body.Close()
+		require.Equal(t, http.StatusOK, issueResp.StatusCode)
+
+		var issueData IssueResponse
+		err = json.NewDecoder(issueResp.Body).Decode(&issueData)
+		require.NoError(t, err)
+
+		unblindedHex := unblindSignature(t, engine, issueData.BlindSignature, r)
+		witnessHex := createWitness(t, engine, msg, dst)
+
+		consumeReq := ConsumeRequest{
+			UnblindedSignature: unblindedHex,
+			Witness:            witnessHex,
+			CredentialClass:    "test_class",
+			KeyEpoch:           issueData.KeyEpoch,
+		}
+		consumeBody, _ := json.Marshal(consumeReq)
+		resp, err = makeRequest(ts, "POST", "/v1/credential/consume", consumeBody, "")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		// Should fail with conflict or bad request due to revocation
+		require.Equal(t, http.StatusConflict, resp.StatusCode)
+		var consumeResp ConsumeResponse
+		err = json.NewDecoder(resp.Body).Decode(&consumeResp)
+		require.NoError(t, err)
+		require.False(t, consumeResp.Valid)
+		require.Contains(t, consumeResp.Error, "revoked")
+	})
+
+	t.Run("user cannot revoke", func(t *testing.T) {
+		revokeBody := map[string]string{
+			"credential_class": "test_class",
+			"reason":           "test revocation",
+		}
+		body, _ := json.Marshal(revokeBody)
+		resp, err := makeRequest(ts, "POST", "/v1/admin/revoke", body, "Bearer "+userTokenString)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	})
+
+	t.Run("unrevoke", func(t *testing.T) {
+		// First revoke
+		revokeBody := map[string]string{
+			"credential_class": "unrevoke_test",
+			"reason":           "to be unrevoked",
+		}
+		body, _ := json.Marshal(revokeBody)
+		resp, err := makeRequest(ts, "POST", "/v1/admin/revoke", body, "Bearer "+adminTokenString)
+		require.NoError(t, err)
+		resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Now unrevoke
+		unrevokeBody := map[string]string{
+			"credential_class": "unrevoke_test",
+		}
+		body, _ = json.Marshal(unrevokeBody)
+		resp, err = makeRequest(ts, "DELETE", "/v1/admin/revoke", body, "Bearer "+adminTokenString)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Verify unrevoke worked by issuing and consuming
+		engine := crypto.NewBLS12Engine()
+		msg := []byte("test message")
+		dst := []byte(cfg.DST)
+		blindedHex, r := createBlindedMessage(t, engine, msg, dst)
+
+		issueReq := IssueRequest{
+			BlindedMessage:  blindedHex,
+			CredentialClass: "unrevoke_test",
+		}
+		issueBody, _ := json.Marshal(issueReq)
+		issueResp, err := makeRequest(ts, "POST", "/v1/credential/issue", issueBody, "Bearer "+adminTokenString)
+		require.NoError(t, err)
+		defer issueResp.Body.Close()
+		require.Equal(t, http.StatusOK, issueResp.StatusCode)
+
+		var issueData IssueResponse
+		err = json.NewDecoder(issueResp.Body).Decode(&issueData)
+		require.NoError(t, err)
+
+		unblindedHex := unblindSignature(t, engine, issueData.BlindSignature, r)
+		witnessHex := createWitness(t, engine, msg, dst)
+
+		consumeReq := ConsumeRequest{
+			UnblindedSignature: unblindedHex,
+			Witness:            witnessHex,
+			CredentialClass:    "unrevoke_test",
+			KeyEpoch:           issueData.KeyEpoch,
+		}
+		consumeBody, _ := json.Marshal(consumeReq)
+		resp, err = makeRequest(ts, "POST", "/v1/credential/consume", consumeBody, "")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("list revocations", func(t *testing.T) {
+		resp, err := makeRequest(ts, "GET", "/v1/admin/revocations", nil, "Bearer "+adminTokenString)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var result map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		require.NoError(t, err)
+		revocations, ok := result["revocations"]
+		require.True(t, ok)
+		require.NotNil(t, revocations)
+	})
+}

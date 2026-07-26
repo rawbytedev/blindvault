@@ -76,13 +76,13 @@ func main() {
 		panic(err)
 	}
 
-	// 4. Unblind
+	// 4. Unblind (by user)
 	sigBytes, _ := hex.DecodeString(issueResp.BlindSignature)
 	sig, _ := crypto.DeserializeG1(sigBytes)
 	unblinded, _ := engine.UnblindSignature(sig, r)
 	unblindedHex := hex.EncodeToString(unblinded.Compress())
 
-	// 5. Witness
+	// 5. Witness (from user)
 	witness := hex.EncodeToString(point.Compress())
 
 	// 6. Consume
@@ -102,7 +102,7 @@ func main() {
 	if resp2.StatusCode != 200 {
 		panic(fmt.Sprintf("consume failed: %d %s", resp2.StatusCode, body2))
 	}
-	fmt.Println("✅ First consume successful")
+	fmt.Println("First consume successful")
 
 	// 7. Replay (should fail)
 	req3, _ := http.NewRequest("POST", baseURL+"/v1/credential/consume", bytes.NewReader(consumeBody))
@@ -113,10 +113,10 @@ func main() {
 	if resp3.StatusCode != 409 {
 		panic(fmt.Sprintf("replay should fail with 409, got %d", resp3.StatusCode))
 	}
-	fmt.Println("✅ Replay rejected (409) - all good!")
+	fmt.Println("Replay rejected (409) - all good!")
 
 	// 8. Print success
-	fmt.Println("🎉 End-to-end test passed against Docker container!")
+	fmt.Println("End-to-end test passed against Docker container!")
 }
 
 func generateJWT(secret string) string {

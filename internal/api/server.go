@@ -21,24 +21,36 @@ type Server struct {
 	rateLimiter       *RateLimiter
 	credentialService *service.CredentialService
 	metrics           metrics.MetricsReporter
+	revocationStore   storage.RevocationStore
 }
 
 // NewServer initializes a new Server with the given configuration, setting up storage, services, and HTTP handlers.
 func NewServer(cfg *service.Config) (*Server, error) {
 	// Init storage
 	var nullifierStore storage.NullifierStore
-	var err error
+	var revocationStore storage.RevocationStore
 	metrics := GetMetrics()
 	if cfg.UseMemoryStore {
 		nullifierStore = storage.NewInMemoryNullifierStore()
+		revocationStore = storage.NewInMemoryRevocationStore()
 	} else {
-		nullifierStore, err = storage.NewRedisNullifierStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, time.Duration(cfg.RedisExpiration), metrics)
+		redisClient, err := storage.NewRedisClient(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 		if err != nil {
-			return nil, err // use errors.Wrap later
+			return nil, err
+		}
+		nullifierStore = storage.NewRedisNullifierStoreWithClient(redisClient, time.Duration(cfg.RedisExpiration))
+		// Revocation store: use separate Redis if configured, otherwise reuse main client
+		if cfg.RevocationRedisAddr != "" {
+			revClient, err := storage.NewRedisClient(cfg.RevocationRedisAddr, cfg.RevocationRedisPassword, cfg.RevocationRedisDB)
+			if err != nil {
+				return nil, err
+			}
+			revocationStore = storage.NewRedisRevocationStore(revClient)
+		} else {
+			revocationStore = storage.NewRedisRevocationStore(redisClient)
 		}
 	}
-
-	credService := service.NewCredentialService(cfg, nullifierStore)
+	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore, metrics)
 	jwtValidator := auth.NewJWTValidator(cfg.AuthSecret)
 	rateLimiter := NewRateLimiter(100, 20)
 
@@ -48,6 +60,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		rateLimiter:       rateLimiter,
 		credentialService: credService,
 		metrics:           metrics,
+		revocationStore:   revocationStore,
 	}
 
 	mux := http.NewServeMux()
@@ -65,6 +78,33 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(s.handleConsume),
+			),
+		),
+	)
+	mux.HandleFunc("POST /v1/admin/revoke",
+		s.RecoveryMiddleware(
+			s.LoggerMiddleware(
+				s.RateLimitMiddleware(
+					s.AdminAuthMiddleware(s.handleAdminRevoke),
+				),
+			),
+		),
+	)
+	mux.HandleFunc("DELETE /v1/admin/revoke",
+		s.RecoveryMiddleware(
+			s.LoggerMiddleware(
+				s.RateLimitMiddleware(
+					s.AdminAuthMiddleware(s.handleAdminUnrevoke),
+				),
+			),
+		),
+	)
+	mux.HandleFunc("GET /v1/admin/revocations",
+		s.RecoveryMiddleware(
+			s.LoggerMiddleware(
+				s.RateLimitMiddleware(
+					s.AdminAuthMiddleware(s.handleAdminListRevocations),
+				),
 			),
 		),
 	)
@@ -101,5 +141,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if err := s.credentialService.Close(); err != nil {
 		logger.Error(ctx).Err(err).Msg("failed to close credential service")
 	}
+
 	return s.httpServer.Shutdown(ctx)
 }

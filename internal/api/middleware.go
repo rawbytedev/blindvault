@@ -13,7 +13,45 @@ type contextKey string
 
 const (
 	claimsKey contextKey = "claims"
+	adminKey  contextKey = "adminKey" // used in handlers
+
 )
+
+// AdminAuthMiddleware validates JWT and ensures the token has admin privileges.
+func (s *Server) AdminAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			s.respondError(ctx, w, http.StatusUnauthorized, "missing authorization header")
+			return
+		}
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			s.respondError(ctx, w, http.StatusUnauthorized, "invalid authorization format")
+			return
+		}
+		claims, err := s.jwtValidator.Validate(parts[1])
+		if err != nil {
+			s.respondError(ctx, w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		// Check for admin claim
+		admin, ok := claims["admin"]
+		if !ok || admin != true {
+			s.respondError(ctx, w, http.StatusForbidden, "admin privileges required")
+			return
+		}
+		// Extract admin identity (subject)
+		adminID, _ := claims["sub"].(string)
+		if adminID == "" {
+			adminID = "unknown"
+		}
+		ctx = context.WithValue(ctx, adminKey, adminID)
+		ctx = context.WithValue(ctx, claimsKey, claims)
+		next(w, r.WithContext(ctx))
+	}
+}
 
 // AuthMiddleware validates JWT for protected endpoints.
 func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {

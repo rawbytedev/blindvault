@@ -15,6 +15,8 @@ type MetricsReporter interface {
 	RecordConsumption(result, credentialClass, epoch string)
 	// RecordNullifierStore records the storage of a nullifier.
 	RecordNullifierStore(operation, result string)
+	RecordRevocation(result, credentialClass string)      
+    RecordUnrevocation(result, credentialClass string)
 	// metricsHandler returns an HTTP handler that serves the metrics endpoint.
 	MetricsHandler() http.Handler
 }

@@ -38,6 +38,8 @@ type MetricsCollector struct {
 
 	// Storage metrics
 	nullifierStoreOps *prometheus.CounterVec
+	revocationOps     *prometheus.CounterVec
+	unrevocationOps   *prometheus.CounterVec
 }
 
 // NewMetricsCollector creates and registers all metrics.
@@ -79,6 +81,20 @@ func NewMetricsCollector() metrics.MetricsReporter {
 			},
 			[]string{"operation", "result"},
 		),
+		revocationOps: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "blindvault_revocation_operations_total",
+				Help: "Total number of revocation operations",
+			},
+			[]string{"result", "credential_class"},
+		),
+		unrevocationOps: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "blindvault_Unrevocation_operations_total",
+				Help: "Total number of Unrevocation operations",
+			},
+			[]string{"result", "credential_class"},
+		),
 	}
 	// Register all metrics with Prometheus
 	prometheus.MustRegister(
@@ -87,6 +103,8 @@ func NewMetricsCollector() metrics.MetricsReporter {
 		m.credentialIssuance,
 		m.credentialConsumption,
 		m.nullifierStoreOps,
+		m.revocationOps,
+		m.unrevocationOps,
 	)
 
 	return m
@@ -116,4 +134,12 @@ func (m *MetricsCollector) RecordConsumption(result, credentialClass, epoch stri
 // RecordNullifierStore records a nullifier store operation.
 func (m *MetricsCollector) RecordNullifierStore(operation, result string) {
 	m.nullifierStoreOps.WithLabelValues(operation, result).Inc()
+}
+
+func (m *MetricsCollector) RecordRevocation(result, credentialClass string) {
+	m.revocationOps.WithLabelValues(result, credentialClass).Inc()
+}
+
+func (m *MetricsCollector) RecordUnrevocation(result, credentialClass string) {
+	m.unrevocationOps.WithLabelValues(result, credentialClass).Inc()
 }
