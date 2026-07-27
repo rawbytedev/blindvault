@@ -25,6 +25,8 @@ func setupTestServer(t *testing.T) (*httptest.Server, *service.Config) {
 		DST:             "BCIS-TEST",
 		AuthSecret:      "test-secret",
 		UseMemoryStore:  true,
+		RateLimitBurst:  20,
+		RateLimit:       100,
 	}
 	server, err := NewServer(cfg)
 	require.NoError(t, err)

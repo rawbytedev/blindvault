@@ -29,6 +29,8 @@ type Config struct {
 	RevocationRedisDB       int    `yaml:"revocation_redis_db" env:"REVOCATION_REDIS_DB" default:"1"`
 	// Use in-memory store (for testing only)
 	UseMemoryStore bool `yaml:"use_memory_store" env:"USE_MEMORY_STORE" default:"false"`
+	RateLimitBurst int  `yaml:"rate_limit_burst" env:"rate_limit_burst" default:"20"`
+	RateLimit      int  `yaml:"rate_limit_requests" env:"rate_limit_requests" default:"10s"`
 }
 
 // Validate checks required fields.

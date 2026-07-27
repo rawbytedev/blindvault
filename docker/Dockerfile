@@ -1,4 +1,3 @@
-# docker/Dockerfile
 # Build stage
 FROM golang:1.26.5-alpine AS builder
 

@@ -39,7 +39,6 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 	})
 
 	class := "test_class"
-	re_epoch := "2026-02"
 	epoch := "2026-07"
 	admin := "admin@example.com"
 	reason := "security breach"
@@ -81,26 +80,26 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 	})
 
 	t.Run("Revoke with Expiration", func(t *testing.T) {
-		_ = store.UnrevokeClass(class, re_epoch)
+		_ = store.UnrevokeClass(class, epoch)
 		_ = store.UnrevokeClass(class, "")
 		// Revoke with 1 second expiration
 		until := time.Now().UTC().Add(10 * time.Second)
-		err := store.RevokeClass(class, re_epoch, "temporary", admin, &until)
+		err := store.RevokeClass(class, epoch, "temporary", admin, &until)
 		require.NoError(t, err)
 
 		// Immediately revoked
-		revoked, _, err := store.IsRevoked(class, re_epoch)
+		revoked, _, err := store.IsRevoked(class, epoch)
 		require.NoError(t, err)
 		require.True(t, revoked)
 		if rstore, ok := store.(*RedisRevocationStore); ok {
-			raw, err := rstore.client.Get(rstore.ctx, rstore.revocationKey(class, re_epoch)).Result()
+			raw, err := rstore.client.Get(rstore.ctx, rstore.revocationKey(class, epoch)).Result()
 			require.NoError(t, err)
 			t.Logf("Raw JSON from Redis: %s", raw)
 		}
 		// wait for revocation
 		deadline := time.Now().Add(15 * time.Second)
 		for time.Now().Before(deadline) {
-			revoked, _, err = store.IsRevoked(class, re_epoch)
+			revoked, _, err = store.IsRevoked(class, epoch)
 			require.NoError(t, err)
 			if !revoked {
 				break
@@ -108,7 +107,7 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 			time.Sleep(100 * time.Millisecond)
 		}
 		// Now not revoked (expired)
-		revoked, _, err = store.IsRevoked(class, re_epoch)
+		revoked, _, err = store.IsRevoked(class, epoch)
 		require.NoError(t, err)
 		require.False(t, revoked)
 	})
@@ -209,4 +208,5 @@ func testConcurrentRevocation(t *testing.T, store RevocationStore) {
 	require.NoError(t, err)
 	require.True(t, revoked)
 	require.Equal(t, "concurrent", entry.Reason)
+	_ = store.UnrevokeClass(class, epoch)
 }

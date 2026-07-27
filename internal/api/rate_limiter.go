@@ -20,6 +20,9 @@ type RateLimiter struct {
 //   - requestsPerMinute: max requests per minute per IP
 //   - burst: max burst size (should be <= requestsPerMinute, but can be larger for spikes)
 func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
+	if requestsPerMinute == 0 && burst == 0 {
+		return &RateLimiter{}
+	}
 	if burst < 0 {
 		burst = requestsPerMinute
 	}
@@ -34,6 +37,9 @@ func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
 func (rl *RateLimiter) Allow(ip string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
+	if rl.clients == nil {
+		return true
+	}
 	if strings.Contains(ip, ":") {
 		ip = strings.Split(ip, ":")[0]
 	}
