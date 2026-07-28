@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/rawbytedev/blindvault/pkg/crypto"
@@ -179,11 +180,16 @@ func TestCLIIntegration(t *testing.T) {
 // buildCLI builds the CLI binary and returns its path.
 func buildCLI(t *testing.T) string {
 	dir := t.TempDir()
-	binary := filepath.Join(dir, "bv")
+	var binary string
+	if runtime.GOOS == "windows" {
+		binary = filepath.Join(dir, "bv.exe")
+	} else {
+		binary = filepath.Join(dir, "bv")
+	}
 	if testing.Short() {
 		t.Skip("Skipping CLI build in short mode")
 	}
-	cmd := exec.Command("go", "build", "-o", binary, "./cmd/bv")
+	cmd := exec.Command("go", "build", "-o", binary)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()

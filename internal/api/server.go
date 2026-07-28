@@ -52,7 +52,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	}
 	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore, metrics)
 	jwtValidator := auth.NewJWTValidator(cfg.AuthSecret)
-	rateLimiter := NewRateLimiter(100, 20)
+	rateLimiter := NewRateLimiter(cfg.RateLimit, cfg.RateLimitBurst)
 
 	s := &Server{
 		config:            cfg,

@@ -109,7 +109,6 @@ func (s *Server) LoggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 // RateLimitMiddleware applies per-IP rate limiting.
 func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Use a simple in-memory rate limiter or Redis-based
 		ip := r.Header.Get("X-Forwarded-For")
 		if ip == "" {
 			ip = r.RemoteAddr
