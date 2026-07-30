@@ -97,16 +97,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Download all built binaries
+      - name: Download all built binaries and SDK
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Download JS SDK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: js-sdk-package
-          path: artifacts/js-sdk
 
       - name: Create Draft Release and Upload Assets
         env:
