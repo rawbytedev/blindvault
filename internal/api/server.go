@@ -22,6 +22,7 @@ type Server struct {
 	credentialService *service.CredentialService
 	metrics           metrics.MetricsReporter
 	revocationStore   storage.RevocationStore
+	demoStore         *DemoStore
 }
 
 // NewServer initializes a new Server with the given configuration, setting up storage, services, and HTTP handlers.
@@ -29,6 +30,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	// Init storage
 	var nullifierStore storage.NullifierStore
 	var revocationStore storage.RevocationStore
+	var demo *DemoStore
 	metrics := GetMetrics()
 	if cfg.UseMemoryStore {
 		nullifierStore = storage.NewInMemoryNullifierStore()
@@ -53,7 +55,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore, metrics)
 	jwtValidator := auth.NewJWTValidator(cfg.AuthSecret)
 	rateLimiter := NewRateLimiter(cfg.RateLimit, cfg.RateLimitBurst)
-
+	if cfg.UseDemo {
+		demo = NewDemoStore()
+	}
 	s := &Server{
 		config:            cfg,
 		jwtValidator:      jwtValidator,
@@ -61,6 +65,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		credentialService: credService,
 		metrics:           metrics,
 		revocationStore:   revocationStore,
+		demoStore:         demo,
 	}
 
 	mux := http.NewServeMux()
@@ -110,7 +115,15 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	)
 	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("GET /metrics", s.metricsHandler)
+	if demo != nil {
+		mux.HandleFunc("POST /demo/store",
+			s.RecoveryMiddleware(
+				s.LoggerMiddleware(s.handleStoreCredential)))
 
+		mux.HandleFunc("GET /demo/retrieve",
+			s.RecoveryMiddleware(
+				s.LoggerMiddleware(s.handleRetrieveCredential)))
+	}
 	s.httpServer = &http.Server{
 		Addr:         cfg.ListenAddr,
 		Handler:      mux,

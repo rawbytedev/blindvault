@@ -31,6 +31,7 @@ type Config struct {
 	UseMemoryStore bool `yaml:"use_memory_store" env:"USE_MEMORY_STORE" default:"false"`
 	RateLimitBurst int  `yaml:"rate_limit_burst" env:"RATE_LIMIT_BURST" default:"20"`
 	RateLimit      int  `yaml:"rate_limit_requests" env:"RATE_LIMIT_REQUESTS" default:"100"`
+	UseDemo        bool `yaml:"use_demo" env:"USE_DEMO" default:"true"`
 }
 
 // Validate checks required fields.
