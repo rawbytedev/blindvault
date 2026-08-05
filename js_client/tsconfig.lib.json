@@ -19,7 +19,8 @@
     },
     "include": [
         "src/index.ts",
-        "src/bls_blind.ts"
+        "src/bls_blind.ts",
+        "src/utils.ts"
     ],
     "exclude": [
         "src/**/*.test.ts",
