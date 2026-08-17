@@ -43,6 +43,10 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 	admin := "admin@example.com"
 	reason := "security breach"
 
+	// clean uo all stored keys if any
+	store.UnrevokeClass(class, "")
+	store.UnrevokeClass("other_class", "")
+
 	t.Run("Revoke and Check", func(t *testing.T) {
 		// Initially not revoked
 		revoked, _, err := store.IsRevoked(class, epoch)
@@ -91,11 +95,6 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 		revoked, _, err := store.IsRevoked(class, epoch)
 		require.NoError(t, err)
 		require.True(t, revoked)
-		if rstore, ok := store.(*RedisRevocationStore); ok {
-			raw, err := rstore.client.Get(rstore.ctx, rstore.revocationKey(class, epoch)).Result()
-			require.NoError(t, err)
-			t.Logf("Raw JSON from Redis: %s", raw)
-		}
 		// wait for revocation
 		deadline := time.Now().Add(15 * time.Second)
 		for time.Now().Before(deadline) {

@@ -53,9 +53,10 @@ func DeriveSigningKey(masterSeed []byte, epoch string, credentialClass string) (
 	if err != nil {
 		return nil, err
 	}
-	// Convert the 64-byte output to a BLS12-381 scalar by reducing modulo r.
+	// Convert the 64-byte output to a BLS12-381 scalar.
 	var sk blst.Scalar
-	sk.FromBEndian(hkdf_key)
-
+	if !sk.HashTo(hkdf_key, []byte("BCIS-V1-SCALAR")) {
+		return nil, errors.New("hash-to-scalar failed")
+	}
 	return &BlstScalar{inner: &sk}, nil
 }

@@ -31,13 +31,17 @@ func (e *BLS12Engine) DLEQProve(sk Scalar, blinded PointG1, pk PointG2) (*DLEQPr
 	if err != nil {
 		return nil, err
 	}
-	cOriginal := *c
-	cCopy := &cOriginal
+	// copy to avoid mutation
+	cCopy := *c
 	c_sk, ok := cCopy.Mul(blstSK)
 	if !ok {
 		return nil, errors.New("scalar multiplication failed")
 	}
-	s, ok := blstT.Add(c_sk)
+	// clone
+	tClone := new(blst.Scalar)
+	*tClone = *blstT
+
+	s, ok := tClone.Add(c_sk)
 	if !ok {
 		return nil, errors.New("scalar addition failed")
 	}
@@ -91,6 +95,7 @@ func (e *BLS12Engine) DLEQVerify(proof *DLEQProof, blinded, sig PointG1, pk Poin
 
 	return left2.Equals(right2)
 }
+
 func computeChallenge(R1 *blst.P2, R2 *blst.P1, PK *blst.P2, Bprime, Cprime *blst.P1) (*blst.Scalar, error) {
 	r1Comp := R1.ToAffine().Compress()
 	if r1Comp == nil {

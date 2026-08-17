@@ -131,7 +131,7 @@ func (s *RedisRevocationStore) Close() error {
 
 func (s *RedisRevocationStore) revocationKey(class, epoch string) string {
 	if epoch == "" {
-		return fmt.Sprintf("revoke:%s:*", class)
+		return fmt.Sprintf("revoke:%s:all", class)
 	}
 	return fmt.Sprintf("revoke:%s:%s", class, epoch)
 }

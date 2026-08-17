@@ -17,8 +17,10 @@ func ComputeNullifier(epoch string, credentialClass string, sig PointG1) []byte 
 	h.Write([]byte(epoch))
 	h.Write([]byte(credentialClass))
 	// Write the uncompressed serialization of the signature point.
-	// Using Serialize() (96 bytes) vs Compress() (48 bytes) adds an extra safety margin
-	// against potential compression collisions, though both are deterministic.
+	// Using Serialize() (96 bytes)adds an extra safety margin
+	// against potential compression collisions.
 	h.Write(sig.Serialize())
+	// adding additional version marker
+	h.Write([]byte{0x01})
 	return h.Sum(nil)
 }
