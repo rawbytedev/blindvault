@@ -13,9 +13,11 @@ import (
 func ComputeNullifier(epoch string, credentialClass string, sig PointG1) []byte {
 	h := sha256.New()
 	// Write fixed protocol prefix for domain separation
-	h.Write([]byte("BCIS-V1"))
+	h.Write([]byte("BCIS-V1\x00"))
 	h.Write([]byte(epoch))
+	h.Write([]byte{0x00})
 	h.Write([]byte(credentialClass))
+	h.Write([]byte{0x00})
 	// Write the uncompressed serialization of the signature point.
 	// Using Serialize() (96 bytes)adds an extra safety margin
 	// against potential compression collisions.

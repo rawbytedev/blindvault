@@ -46,7 +46,7 @@ func DeriveSigningKey(masterSeed []byte, epoch string, credentialClass string) (
 
 	// Build the info string with strict hierarchical concatenation.
 	// Format: "BCIS" + "SIGNING_KEY" + <epoch> + <credentialClass>
-	info := protocolTag + purpose + epoch + credentialClass
+	info := protocolTag + "\x00" + purpose + "\x00" + epoch + "\x00" + credentialClass
 
 	// Use HKDF with SHA-256 to derive a 64-byte key from the master seed.
 	hkdf_key, err := hkdf.Key(sha256.New, masterSeed, []byte(salt), info, 64)
