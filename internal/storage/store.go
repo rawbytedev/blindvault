@@ -1,6 +1,9 @@
 package storage
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // NullifierStore defines the interface for replay protection.
 type NullifierStore interface {
@@ -9,7 +12,7 @@ type NullifierStore interface {
 	//   - (true, nil) if nullifier is new and stored successfully
 	//   - (false, nil) if nullifier already exists (replay attempt)
 	//   - (false, err) if an error occurred
-	CheckAndStore(nullifier []byte) (bool, error)
+	CheckAndStore(ctx context.Context, nullifier []byte) (bool, error)
 
 	// Close closes the underlying connection.
 	Close() error

@@ -8,6 +8,7 @@ import (
 	"github.com/rawbytedev/blindvault/pkg/errors"
 	"github.com/rawbytedev/blindvault/pkg/metrics"
 
+	"github.com/rawbytedev/blindvault/internal/helper"
 	"github.com/rawbytedev/blindvault/internal/storage"
 	"github.com/rawbytedev/blindvault/pkg/crypto"
 )
@@ -55,6 +56,10 @@ func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string)
 		return nil, errors.Wrap(ctx, err, "invalid blinded_message hex")
 	}
 
+	if err := helper.CheckContext(ctx, "request cancelled before crypto operations"); err != nil {
+		return nil, err
+	}
+
 	blinded, err := crypto.DeserializeG1(blindedBytes)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "invalid blinded_message point")
@@ -75,6 +80,10 @@ func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string)
 	blindSig, err := s.engine.SignBlinded(blinded, sk)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "signing failed")
+	}
+
+	if err := helper.CheckContext(ctx, "request cancelled before DLEQ proof generation"); err != nil {
+		return nil, err
 	}
 
 	// 5. Get public key and generate DLEQ proof
@@ -160,13 +169,17 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 
 	// 5. Verify the signature against the witness using VerifyPoint
 	//    This checks: e(σ, G₂) == e(Y, PK)
+	if err := helper.CheckContext(ctx, "request Cancelled before verification"); err != nil {
+		return nil, err
+	}
+
 	if !s.engine.VerifyPoint(sig, witness, pk) {
 		return nil, errors.New(ctx, "invalid signature")
 	}
 
 	// 6. Compute nullifier and check replay
 	nullifier := crypto.ComputeNullifier(epoch, class, sig)
-	isNew, err := s.store.CheckAndStore(nullifier)
+	isNew, err := s.store.CheckAndStore(ctx, nullifier)
 	if err != nil {
 		s.nullifierstore("failure", err.Error())
 		return nil, fmt.Errorf("nullifier store error: %w", err)

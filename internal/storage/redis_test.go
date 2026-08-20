@@ -24,11 +24,11 @@ func TestRedisNullifierStore(t *testing.T) {
 	require.NoError(t, err)
 
 	nullifier := []byte("test-redis-nullifier")
-	isNew, err := store.CheckAndStore(nullifier)
+	isNew, err := store.CheckAndStore(t.Context(), nullifier)
 	require.NoError(t, err)
 	require.True(t, isNew)
 
-	isNew, err = store.CheckAndStore(nullifier)
+	isNew, err = store.CheckAndStore(t.Context(), nullifier)
 	require.NoError(t, err)
 	require.False(t, isNew)
 

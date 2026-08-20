@@ -10,14 +10,12 @@ import (
 // RedisNullifierStore is a Redis-backed implementation of the NullifierStore interface. It uses Redis to store nullifiers with an expiration time, allowing for efficient checking and storage of nullifiers in a distributed environment.
 type RedisNullifierStore struct {
 	client     *redis.Client
-	ctx        context.Context
 	expiration time.Duration
 }
 
 func NewRedisNullifierStoreWithClient(client *redis.Client, expiration time.Duration) NullifierStore {
 	return &RedisNullifierStore{
 		client:     client,
-		ctx:        context.Background(),
 		expiration: expiration,
 	}
 }
@@ -37,17 +35,17 @@ func NewRedisNullifierStore(addr, password string, db int, expiration time.Durat
 
 	return &RedisNullifierStore{
 		client:     client,
-		ctx:        ctx,
 		expiration: expiration,
 	}, nil
 }
 
-func (s *RedisNullifierStore) CheckAndStore(nullifier []byte) (bool, error) {
+func (s *RedisNullifierStore) CheckAndStore(ctx context.Context, nullifier []byte) (bool, error) {
 	key := string(nullifier)
 
 	// SETNX atomically sets the key only if it doesn't exist.
 	// Returns true if set, false if already exists.
-	ok, err := s.client.SetNX(s.ctx, key, "1", s.expiration).Result()
+	// Use the request context
+	ok, err := s.client.SetNX(ctx, key, "1", s.expiration).Result()
 	if err != nil {
 		return false, err
 	}

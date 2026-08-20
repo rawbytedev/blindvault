@@ -12,18 +12,18 @@ func TestInMemoryNullifierStore(t *testing.T) {
 	nullifier := []byte("test-nullifier")
 
 	// First check should be new
-	isNew, err := store.CheckAndStore(nullifier)
+	isNew, err := store.CheckAndStore(t.Context(), nullifier)
 	require.NoError(t, err)
 	require.True(t, isNew)
 
 	// Second check should be existing
-	isNew, err = store.CheckAndStore(nullifier)
+	isNew, err = store.CheckAndStore(t.Context(), nullifier)
 	require.NoError(t, err)
 	require.False(t, isNew)
 
 	// Different nullifier should be new
 	nullifier2 := []byte("another")
-	isNew, err = store.CheckAndStore(nullifier2)
+	isNew, err = store.CheckAndStore(t.Context(), nullifier2)
 	require.NoError(t, err)
 	require.True(t, isNew)
 
