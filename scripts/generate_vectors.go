@@ -16,10 +16,12 @@ const (
 	credentialClass = "tier_gold"
 	message         = "Hello BlindVault"
 	dst             = "BCIS-V1-MESSAGE"
+	randomScalar    = "38c68a61123fdfd471569e3fb9398b29a8f96d27b99f36677dc3b9163a618b49" // value is generaly random
 )
 
 func main() {
 	outputPath := flag.String("output", "docs/crypto_vectors.md", "path to write generated test vectors")
+	random := flag.Bool("rand", false, "whether to use random scalar or not, default: false")
 	flag.Parse()
 
 	if err := os.MkdirAll(filepath.Dir(*outputPath), 0o755); err != nil {
@@ -55,13 +57,25 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to hash to curve: %v\n", err)
 		os.Exit(1)
 	}
-
-	r, err := crypto.NewRandomScalar()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to generate blinding scalar: %v\n", err)
-		os.Exit(1)
+	var r crypto.Scalar
+	if *random {
+		r, err = crypto.NewRandomScalar()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to generate blinding scalar: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		randBytes, err := hex.DecodeString(randomScalar)
+		if err != nil {
+			fmt.Fprint(os.Stderr, "failed to decode scalar from hex: %v\n")
+			os.Exit(1)
+		}
+		r, err = crypto.NewBlstScalarFromBytes(randBytes)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to convert blinding scalar from bytes: %v\n", err)
+			os.Exit(1)
+		}
 	}
-
 	blinded, err := engine.BlindMessage(msgPoint, r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to blind message: %v\n", err)
@@ -121,10 +135,13 @@ func main() {
 
 - blinded_message: "%s"
 - blind_signature: "%s"
+
+Note: the proof are always differents(randomized)
 - proof_r1: "%s"
 - proof_r2: "%s"
 - proof_s: "%s"
 - proof_c: "%s"
+
 - random_scalar: "%s"
 
 ## Consumption
