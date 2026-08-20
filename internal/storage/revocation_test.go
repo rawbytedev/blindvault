@@ -44,8 +44,8 @@ func testRevocationStore(t *testing.T, store RevocationStore) {
 	reason := "security breach"
 
 	// clean uo all stored keys if any
-	store.UnrevokeClass(class, "")
-	store.UnrevokeClass("other_class", "")
+	_ = store.UnrevokeClass(class, "")
+	_ = store.UnrevokeClass("other_class", "")
 
 	t.Run("Revoke and Check", func(t *testing.T) {
 		// Initially not revoked
