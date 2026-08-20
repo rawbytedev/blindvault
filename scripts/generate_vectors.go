@@ -67,7 +67,7 @@ func main() {
 	} else {
 		randBytes, err := hex.DecodeString(randomScalar)
 		if err != nil {
-			fmt.Fprint(os.Stderr, "failed to decode scalar from hex: %v\n", err)
+			fmt.Fprintf(os.Stderr, "failed to decode scalar from hex: %v\n", err)
 			os.Exit(1)
 		}
 		r, err = crypto.NewBlstScalarFromBytes(randBytes)
