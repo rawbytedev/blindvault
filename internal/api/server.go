@@ -19,7 +19,7 @@ type Server struct {
 	config            *service.Config
 	jwtValidator      *auth.JWTValidator
 	rateLimiter       *RateLimiter
-	credentialService *service.CredentialService
+	credentialService service.CredentialIssuer
 	metrics           metrics.MetricsReporter
 	revocationStore   storage.RevocationStore
 	demoStore         *DemoStore

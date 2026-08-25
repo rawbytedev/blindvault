@@ -33,7 +33,7 @@ func (s *CredentialService) Close() error {
 	return nil
 }
 
-func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore, metrics metrics.MetricsReporter) *CredentialService {
+func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore, metrics metrics.MetricsReporter) CredentialIssuer {
 	return &CredentialService{
 		engine:          crypto.NewBLS12Engine(),
 		config:          cfg,

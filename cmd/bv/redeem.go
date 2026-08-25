@@ -46,7 +46,11 @@ func redeemCmd() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	sigBytes, _ := hex.DecodeString(*sigHex)
+	sigBytes, err := hex.DecodeString(*sigHex)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid hex: %v\n", err)
+		os.Exit(1)
+	}
 	sigPoint, err := crypto.DeserializeG1(sigBytes)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid signature: %v\n", err)
