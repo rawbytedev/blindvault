@@ -108,8 +108,8 @@ func TestConfig_MasterSeed(t *testing.T) {
 	seed, err := cfg.MasterSeed()
 	require.NoError(t, err)
 	buf, err := seed.Open()
-	defer buf.Close()
 	require.NoError(t, err)
+	defer buf.Close()
 	require.Len(t, buf.Bytes(), 32)
 }
 

@@ -47,10 +47,11 @@ func (c *Config) Validate() error {
 	}
 	if c.MasterSeedEnclave != nil {
 		buff, err := c.MasterSeedEnclave.Open()
-		defer buff.Close()
 		if err != nil {
 			return fmt.Errorf("LockedBuffer is nil")
 		}
+		defer buff.Close()
+		
 		if len(buff.Bytes()) != 64 {
 			return fmt.Errorf("master_seed must be 64 hex characters (32 bytes)")
 		}

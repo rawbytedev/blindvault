@@ -26,7 +26,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cfg.LoadMasterSeed()
+	if err := cfg.LoadMasterSeed(); err != nil {
+		panic(err)
+	}
 
 	if err := cfg.Validate(); err != nil {
 		panic(err)
