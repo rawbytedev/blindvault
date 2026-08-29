@@ -4,12 +4,13 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/rawbytedev/blindvault/pkg/securememory"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeriveSigningKey(t *testing.T) {
-	masterSeed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
-
+	Seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+	masterSeed := securememory.NewEnclaveFromBytes(Seed)
 	// Test valid derivation
 	sk, err := DeriveSigningKey(masterSeed, "2026-01", "tier_gold")
 	require.NoError(t, err)

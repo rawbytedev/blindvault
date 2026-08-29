@@ -20,7 +20,7 @@ func TestRedisNullifierStore(t *testing.T) {
 	defer client.Close()
 
 	// metrics can be nil for testing
-	store, err := NewRedisNullifierStore("localhost:6379", "", 15, time.Hour)
+	store, err := NewRedisNullifierStore("localhost:6379", "", 15, 2*time.Second)
 	require.NoError(t, err)
 
 	nullifier := []byte("test-redis-nullifier")

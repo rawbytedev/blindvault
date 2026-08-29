@@ -26,6 +26,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	cfg.LoadMasterSeed()
 
 	if err := cfg.Validate(); err != nil {
 		panic(err)
@@ -72,7 +73,6 @@ func loadConfig(path string) (*service.Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
-
 	// Override with environment variables (using env vars as source of truth)
 	if seed := os.Getenv("MASTER_SEED_HEX"); seed != "" {
 		cfg.MasterSeedHex = seed

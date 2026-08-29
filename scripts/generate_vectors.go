@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/pkg/securememory"
 )
 
 const (
@@ -37,6 +38,7 @@ func main() {
 	defer f.Close()
 
 	seed, err := hex.DecodeString(masterSeedHex)
+	masterSeed := securememory.NewEnclaveFromBytes(seed)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to decode master seed: %v\n", err)
 		os.Exit(1)
@@ -44,7 +46,7 @@ func main() {
 
 	engine := crypto.NewBLS12Engine()
 
-	sk, err := crypto.DeriveSigningKey(seed, epoch, credentialClass)
+	sk, err := crypto.DeriveSigningKey(masterSeed, epoch, credentialClass)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to derive signing key: %v\n", err)
 		os.Exit(1)

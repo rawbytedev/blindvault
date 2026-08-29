@@ -107,7 +107,10 @@ func TestConfig_MasterSeed(t *testing.T) {
 	cfg := &Config{MasterSeedHex: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"}
 	seed, err := cfg.MasterSeed()
 	require.NoError(t, err)
-	require.Len(t, seed, 32)
+	buf, err := seed.Open()
+	defer buf.Close()
+	require.NoError(t, err)
+	require.Len(t, buf.Bytes(), 32)
 }
 
 func TestConfig_DSTBytes(t *testing.T) {

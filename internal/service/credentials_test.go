@@ -18,7 +18,6 @@ func TestCredentialService_Consume_Revoked(t *testing.T) {
 		DST:             "BCIS-TEST",
 		UseMemoryStore:  true,
 	}
-
 	nullifierStore := storage.NewInMemoryNullifierStore()
 	revocationStore := storage.NewInMemoryRevocationStore()
 	svc := NewCredentialService(cfg, nullifierStore, revocationStore, nil)

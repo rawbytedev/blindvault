@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
+	"github.com/rawbytedev/blindvault/pkg/securememory"
 	blst "github.com/supranational/blst/bindings/go"
 )
 
@@ -33,7 +34,16 @@ const (
 //   - Purpose isolation (fixed "SIGNING_KEY" tag)
 //   - Lifecycle rotation (epoch)
 //   - Application namespace isolation (credentialClass)
-func DeriveSigningKey(masterSeed []byte, epoch string, credentialClass string) (Scalar, error) {
+func DeriveSigningKey(seedEnclave *securememory.Enclave, epoch string, credentialClass string) (Scalar, error) {
+	if seedEnclave == nil {
+		return nil, errors.New("master seed cannot be empty")
+	}
+	lockedBuffer, err := seedEnclave.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer lockedBuffer.Close() // This zeroes the memory
+	masterSeed := lockedBuffer.Bytes()
 	if len(masterSeed) == 0 {
 		return nil, errors.New("master seed cannot be empty")
 	}

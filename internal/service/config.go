@@ -3,6 +3,11 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"os"
+	"strings"
+
+	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/rs/zerolog/log"
 )
 
 // Config holds all service-level configuration.
@@ -11,10 +16,11 @@ type Config struct {
 	ListenAddr string `yaml:"listen_addr" env:"LISTEN_ADDR" default:":8080"`
 
 	// Crypto settings
-	MasterSeedHex   string   `yaml:"master_seed_hex" env:"MASTER_SEED_HEX"`
-	ActiveEpoch     string   `yaml:"active_epoch" env:"ACTIVE_EPOCH" default:"2026-01"`
-	SupportedEpochs []string `yaml:"supported_epochs" env:"SUPPORTED_EPOCHS"` // e.g., ["2026-01", "2025-12"]
-	DST             string   `yaml:"dst" env:"DST" default:"BCIS-V1-MESSAGE"` // For HashToCurve
+	MasterSeedEnclave *securememory.Enclave `yaml:"-" json:"-"`
+	MasterSeedHex     string                `yaml:"master_seed_hex" env:"MASTER_SEED_HEX"` // insecure
+	ActiveEpoch       string                `yaml:"active_epoch" env:"ACTIVE_EPOCH" default:"2026-01"`
+	SupportedEpochs   []string              `yaml:"supported_epochs" env:"SUPPORTED_EPOCHS"` // e.g., ["2026-01", "2025-12"]
+	DST               string                `yaml:"dst" env:"DST" default:"BCIS-V1-MESSAGE"` // For HashToCurve
 
 	// Authentication
 	AuthSecret string `yaml:"auth_secret" env:"AUTH_SECRET"`
@@ -36,11 +42,22 @@ type Config struct {
 
 // Validate checks required fields.
 func (c *Config) Validate() error {
-	if c.MasterSeedHex == "" {
+	if c.MasterSeedEnclave == nil && c.MasterSeedHex == "" {
 		return fmt.Errorf("master_seed_hex is required")
 	}
-	if len(c.MasterSeedHex) != 64 {
-		return fmt.Errorf("master_seed_hex must be 64 hex characters (32 bytes)")
+	if c.MasterSeedEnclave != nil {
+		buff, err := c.MasterSeedEnclave.Open()
+		defer buff.Close()
+		if err != nil {
+			return fmt.Errorf("LockedBuffer is nil")
+		}
+		if len(buff.Bytes()) != 64 {
+			return fmt.Errorf("master_seed must be 64 hex characters (32 bytes)")
+		}
+	} else {
+		if len(c.MasterSeedHex) != 64 {
+			return fmt.Errorf("master_seed_hex must be 64 hex characters (32 bytes)")
+		}
 	}
 	if c.ActiveEpoch == "" {
 		return fmt.Errorf("active_epoch is required")
@@ -60,9 +77,62 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) LoadMasterSeed() error {
+	var seedHex string
+	var source string
+
+	// 1. Try Env Var (Highest Priority)
+	if envSeed := os.Getenv("BLINDVAULT_MASTER_SEED_HEX"); envSeed != "" {
+		seedHex = envSeed
+		source = "environment variable"
+	} else if seedFile := os.Getenv("BLINDVAULT_SEED_FILE"); seedFile != "" {
+		// 2. Try Secret File
+		data, err := os.ReadFile(seedFile)
+		if err != nil {
+			return fmt.Errorf("failed to read seed file %s: %w", seedFile, err)
+		}
+		seedHex = strings.TrimSpace(string(data))
+		source = "secret file"
+		// Zero the file buffer
+		for i := range data {
+			data[i] = 0
+		}
+	} else if c.MasterSeedHex != "" {
+		// 3. Fallback to YAML (Deprecated)
+		seedHex = c.MasterSeedHex
+		source = "config.yaml (DEPRECATED, use env or file)"
+		log.Warn().Msg("Loading master seed from config.yaml is insecure and deprecated!")
+		c.MasterSeedHex = ""
+	} else {
+		return fmt.Errorf("master seed not found in env, file, or config")
+	}
+
+	seedBytes := []byte(seedHex)
+	// Seal it into an Enclave
+	c.MasterSeedEnclave = securememory.NewEnclaveFromBytes(seedBytes)
+
+	for i := range seedBytes {
+		seedBytes[i] = 0
+	}
+
+	log.Info().Str("source", source).Msg("Master seed loaded and sealed")
+	return nil
+}
+
 // MasterSeed returns the decoded master seed.
-func (c *Config) MasterSeed() ([]byte, error) {
-	return hex.DecodeString(c.MasterSeedHex)
+func (c *Config) MasterSeed() (*securememory.Enclave, error) {
+	if c.MasterSeedEnclave != nil {
+		return c.MasterSeedEnclave, nil
+	}
+	if c.MasterSeedHex != "" {
+		seed, err := hex.DecodeString(c.MasterSeedHex)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to desarialize masterseed from Config")
+		}
+		c.MasterSeedEnclave = securememory.NewEnclaveFromBytes(seed)
+		return c.MasterSeedEnclave, nil
+	}
+	return nil, fmt.Errorf("Master seed not loaded")
 }
 
 // DSTBytes returns the DST as bytes.
