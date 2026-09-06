@@ -69,7 +69,7 @@ func (rl *RateLimiter) Cleanup() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 	for key, client := range rl.clients {
-		if time.Now().Sub(client.LastUpdated) > 10*time.Minute {
+		if time.Since(client.LastUpdated) > 10*time.Minute {
 			delete(rl.clients, key)
 		}
 	}
