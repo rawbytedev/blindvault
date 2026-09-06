@@ -111,6 +111,9 @@ func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip := r.Header.Get("X-Forwarded-For")
 		if ip == "" {
+			parts := strings.Split(ip, ",")
+			ip = strings.TrimSpace(parts[0])
+		} else {
 			ip = r.RemoteAddr
 		}
 		if !s.rateLimiter.Allow(ip) {

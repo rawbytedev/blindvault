@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -14,6 +15,15 @@ type InMemoryRevocationStore struct {
 func NewInMemoryRevocationStore() RevocationStore {
 	return &InMemoryRevocationStore{
 		store: make(map[string]RevocationEntry),
+	}
+}
+
+func (s *InMemoryRevocationStore) Ping(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
 	}
 }
 

@@ -100,21 +100,27 @@ func (s *RedisRevocationStore) IsRevoked(class, epoch string) (bool, *Revocation
 
 // ListRevocations returns all active revocation entries.
 func (s *RedisRevocationStore) ListRevocations() ([]RevocationEntry, error) {
-	keys, err := s.client.Keys(s.ctx, "revoke:*").Result()
-	if err != nil {
-		return nil, err
-	}
 	var entries []RevocationEntry
-	for _, key := range keys {
-		data, err := s.client.Get(s.ctx, key).Bytes()
+	var cursor uint64
+	for {
+		keys, nextCursor, err := s.client.Scan(s.ctx, cursor, "revoke:*", 100).Result()
 		if err != nil {
-			continue
+			return nil, err
 		}
-		var entry RevocationEntry
-		if err := json.Unmarshal(data, &entry); err != nil {
-			continue
+		for _, key := range keys {
+			data, err := s.client.Get(s.ctx, key).Bytes()
+			if err != nil {
+				continue
+			}
+			var entry RevocationEntry
+			if err := json.Unmarshal(data, &entry); err == nil {
+				entries = append(entries, entry)
+			}
 		}
-		entries = append(entries, entry)
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
 	}
 	return entries, nil
 }
@@ -123,6 +129,10 @@ func (s *RedisRevocationStore) ListRevocations() ([]RevocationEntry, error) {
 func (s *RedisRevocationStore) UnrevokeClass(class, epoch string) error {
 	key := s.revocationKey(class, epoch)
 	return s.client.Del(s.ctx, key).Err()
+}
+
+func (s *RedisRevocationStore) Ping(ctx context.Context) error {
+	return s.client.Ping(ctx).Err()
 }
 
 func (s *RedisRevocationStore) Close() error {

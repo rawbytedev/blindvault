@@ -2,14 +2,12 @@ package helper
 
 import (
 	"context"
-
-	"github.com/rawbytedev/blindvault/pkg/errors"
 )
 
-func CheckContext(ctx context.Context, err string) error {
+func CheckContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		return errors.Wrap(ctx, ctx.Err(), err)
+		return ctx.Err()
 	default:
 		return nil
 	}

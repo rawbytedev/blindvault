@@ -59,6 +59,10 @@ func (s *RedisNullifierStore) SetExpiration(expiration time.Duration) {
 	s.expiration = expiration
 }
 
+func (s *RedisNullifierStore) Ping(ctx context.Context) error {
+	return s.client.Ping(ctx).Err()
+}
+
 func (s *RedisNullifierStore) Close() error {
 	return s.client.Close()
 }

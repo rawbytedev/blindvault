@@ -2,6 +2,8 @@
 
 BlindVault ships with a Go client library in `pkg/client` and a command-line interface in `cmd/bv`.
 
+Note: The scalar is stored as plain hex text therefore client must protect it and ensure it is not compromised, this is specifically required when scalar is generated randomly
+
 ## Go client package
 
 ### Import

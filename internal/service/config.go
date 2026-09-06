@@ -51,9 +51,9 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("LockedBuffer is nil")
 		}
 		defer buff.Close()
-		
-		if len(buff.Bytes()) != 64 {
-			return fmt.Errorf("master_seed must be 64 hex characters (32 bytes)")
+
+		if len(buff.Bytes()) != 32 {
+			return fmt.Errorf("master_seed decoded length must be 32 bytes (64 hex characters)")
 		}
 	} else {
 		if len(c.MasterSeedHex) != 64 {
@@ -108,7 +108,13 @@ func (c *Config) LoadMasterSeed() error {
 		return fmt.Errorf("master seed not found in env, file, or config")
 	}
 
-	seedBytes := []byte(seedHex)
+	seedBytes, err := hex.DecodeString(seedHex)
+	if err != nil {
+		return fmt.Errorf("invalid master seed format: %w", err)
+	}
+	if len(seedBytes) != 32 {
+		return fmt.Errorf("master seed must be 32 bytes (64 hex characters)")
+	}
 	// Seal it into an Enclave
 	c.MasterSeedEnclave = securememory.NewEnclaveFromBytes(seedBytes)
 
@@ -128,7 +134,10 @@ func (c *Config) MasterSeed() (*securememory.Enclave, error) {
 	if c.MasterSeedHex != "" {
 		seed, err := hex.DecodeString(c.MasterSeedHex)
 		if err != nil {
-			return nil, fmt.Errorf("Unable to desarialize masterseed from Config")
+			return nil, fmt.Errorf("Unable to deserialize masterseed from Config: %w", err)
+		}
+		if len(seed) != 32 {
+			return nil, fmt.Errorf("master seed must be 32 bytes (64 hex characters)")
 		}
 		c.MasterSeedEnclave = securememory.NewEnclaveFromBytes(seed)
 		return c.MasterSeedEnclave, nil

@@ -46,49 +46,34 @@ func verifyCmd() {
 		os.Exit(1)
 	}
 	// Decode all hex
-	b, _ := hex.DecodeString(*blinded)
-	sigB, _ := hex.DecodeString(*sig)
-	pkB, _ := hex.DecodeString(*pk)
-	r1B, _ := hex.DecodeString(*r1)
-	r2B, _ := hex.DecodeString(*r2)
-	sB, _ := hex.DecodeString(*s)
-	cB, _ := hex.DecodeString(*c)
-
+	b, err := hex.DecodeString(*blinded)
+	must(err, "Error: invalid blinded hex")
+	sigB, err := hex.DecodeString(*sig)
+	must(err, "Error: invalid Signature hex")
+	pkB, err := hex.DecodeString(*pk)
+	must(err, "Error: invalid Public Key hex")
+	r1B, err := hex.DecodeString(*r1)
+	must(err, "Error: invalid R1 hex")
+	r2B, err := hex.DecodeString(*r2)
+	must(err, "Error: invalid R2 hex")
+	sB, err := hex.DecodeString(*s)
+	must(err, "Error: invalid S hex")
+	cB, err := hex.DecodeString(*c)
+	must(err, "Error: invalid C hex")
 	blindedPoint, err := crypto.DeserializeG1(b)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid blinded point: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid blindedPoint")
 	sigPoint, err := crypto.DeserializeG1(sigB)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid signature: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid signature point")
 	pkPoint, err := crypto.DeserializeG2(pkB)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid public key: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid Public Key")
 	r1Point, err := crypto.DeserializeG2(r1B)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid R1: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid R1 point")
 	r2Point, err := crypto.DeserializeG1(r2B)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid R2: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid R2 point")
 	sScalar, err := crypto.NewBlstScalarFromBytes(sB)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid S: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid Scalar S")
 	cScalar, err := crypto.NewBlstScalarFromBytes(cB)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid C: %v\n", err)
-		os.Exit(1)
-	}
+	must(err, "Error: invalid Scalar C")
 	proof := &crypto.DLEQProof{
 		R1: r1Point,
 		R2: r2Point,
@@ -104,6 +89,13 @@ func verifyCmd() {
 		fmt.Println("DLEQ proof is valid")
 	} else {
 		fmt.Println("DLEQ proof is invalid")
+		os.Exit(1)
+	}
+}
+
+func must(err error, msg string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
 		os.Exit(1)
 	}
 }

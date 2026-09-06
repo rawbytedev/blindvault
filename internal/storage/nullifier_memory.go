@@ -35,6 +35,15 @@ func (s *InMemoryNullifierStore) CheckAndStore(ctx context.Context, nullifier []
 	return true, nil // new
 }
 
+func (s *InMemoryNullifierStore) Ping(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
+	}
+}
+
 // Close is a no-op for the in-memory store, but it implements the NullifierStore interface.
 func (s *InMemoryNullifierStore) Close() error {
 	return nil

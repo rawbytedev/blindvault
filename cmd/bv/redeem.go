@@ -48,7 +48,7 @@ func redeemCmd() {
 	}
 	sigBytes, err := hex.DecodeString(*sigHex)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: invalid hex: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: invalid hex for signature: %v\n", err)
 		os.Exit(1)
 	}
 	sigPoint, err := crypto.DeserializeG1(sigBytes)
@@ -56,7 +56,11 @@ func redeemCmd() {
 		fmt.Fprintf(os.Stderr, "Invalid signature: %v\n", err)
 		os.Exit(1)
 	}
-	witBytes, _ := hex.DecodeString(*witnessHex)
+	witBytes, err := hex.DecodeString(*witnessHex)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid hex for witness: %v\n", err)
+		os.Exit(1)
+	}
 	witPoint, err := crypto.DeserializeG1(witBytes)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid witness: %v\n", err)

@@ -13,7 +13,8 @@ type NullifierStore interface {
 	//   - (false, nil) if nullifier already exists (replay attempt)
 	//   - (false, err) if an error occurred
 	CheckAndStore(ctx context.Context, nullifier []byte) (bool, error)
-
+	// Ping checks the health of the store.
+	Ping(ctx context.Context) error
 	// Close closes the underlying connection.
 	Close() error
 }
@@ -41,7 +42,8 @@ type RevocationStore interface {
 
 	// UnrevokeClass removes a revocation.
 	UnrevokeClass(class, epoch string) error
-
+	// Ping checks the health of the store.
+	Ping(ctx context.Context) error
 	// Close cleans up resources.
 	Close() error
 }

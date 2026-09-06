@@ -90,7 +90,7 @@ func NewMetricsCollector() metrics.MetricsReporter {
 		),
 		unrevocationOps: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name: "blindvault_Unrevocation_operations_total",
+				Name: "blindvault_unrevocation_operations_total",
 				Help: "Total number of Unrevocation operations",
 			},
 			[]string{"result", "credential_class"},

@@ -4,6 +4,7 @@ package api
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/time/rate"
 )
@@ -13,7 +14,13 @@ type RateLimiter struct {
 	mu      sync.RWMutex
 	limit   rate.Limit
 	burst   int
-	clients map[string]*rate.Limiter
+	clients map[string]*LimitClient
+}
+
+type LimitClient struct {
+	Client      string
+	Limit       *rate.Limiter
+	LastUpdated time.Time
 }
 
 // NewRateLimiter creates a rate limiter with:
@@ -29,7 +36,7 @@ func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
 	return &RateLimiter{
 		limit:   rate.Limit(float64(requestsPerMinute) / 60.0), // per second
 		burst:   burst,
-		clients: make(map[string]*rate.Limiter),
+		clients: make(map[string]*LimitClient),
 	}
 }
 
@@ -45,11 +52,15 @@ func (rl *RateLimiter) Allow(ip string) bool {
 	}
 	limiter, exists := rl.clients[ip]
 	if !exists {
-		limiter = rate.NewLimiter(rl.limit, rl.burst)
+		limiter = &LimitClient{ // Allocate the struct first!
+			Client:      ip,
+			Limit:       rate.NewLimiter(rl.limit, rl.burst),
+			LastUpdated: time.Now(),
+		}
 		rl.clients[ip] = limiter
 	}
-
-	return limiter.Allow()
+	limiter.LastUpdated = time.Now()
+	return limiter.Limit.Allow()
 }
 
 // Cleanup removes expired limiters to prevent memory leaks.
@@ -57,5 +68,9 @@ func (rl *RateLimiter) Allow(ip string) bool {
 func (rl *RateLimiter) Cleanup() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
-	rl.clients = make(map[string]*rate.Limiter)
+	for key, client := range rl.clients {
+		if time.Now().Sub(client.LastUpdated) > 10*time.Minute {
+			delete(rl.clients, key)
+		}
+	}
 }

@@ -204,6 +204,12 @@ func (s *Server) handleAdminListRevocations(w http.ResponseWriter, r *http.Reque
 // handleHealth handles GET /health
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	// Check if store is healthy (e.g., Redis ping)
+	if err := s.credentialService.Ping(ctx); err != nil {
+		s.respondError(ctx, w, http.StatusServiceUnavailable, "storage unhealthy: "+err.Error())
+		return
+	}
+	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

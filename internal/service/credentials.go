@@ -43,6 +43,19 @@ func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationS
 	}
 }
 
+// Ping checks the health of the underlying stores (nullifier and revocation).
+func (s *CredentialService) Ping(ctx context.Context) error {
+	if err := s.store.Ping(ctx); err != nil {
+		return fmt.Errorf("nullifier store ping failed: %w", err)
+	}
+	if s.revocationStore != nil {
+		if err := s.revocationStore.Ping(ctx); err != nil {
+			return fmt.Errorf("revocation store ping failed: %w", err)
+		}
+	}
+	return nil
+}
+
 // Issue issues a blind credential for a given blinded message and credential class.
 func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string) (*IssueResult, error) {
 	// 1. Validate class
@@ -56,8 +69,8 @@ func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string)
 		return nil, errors.Wrap(ctx, err, "invalid blinded_message hex")
 	}
 
-	if err := helper.CheckContext(ctx, "request cancelled before crypto operations"); err != nil {
-		return nil, err
+	if err := helper.CheckContext(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, "request cancelled before deserializing blinded_message")
 	}
 
 	blinded, err := crypto.DeserializeG1(blindedBytes)
@@ -82,8 +95,8 @@ func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string)
 		return nil, errors.Wrap(ctx, err, "signing failed")
 	}
 
-	if err := helper.CheckContext(ctx, "request cancelled before DLEQ proof generation"); err != nil {
-		return nil, err
+	if err := helper.CheckContext(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, "request cancelled before DLEQ proof generation")
 	}
 
 	// 5. Get public key and generate DLEQ proof
@@ -169,8 +182,8 @@ func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, cla
 
 	// 5. Verify the signature against the witness using VerifyPoint
 	//    This checks: e(σ, G₂) == e(Y, PK)
-	if err := helper.CheckContext(ctx, "request Cancelled before verification"); err != nil {
-		return nil, err
+	if err := helper.CheckContext(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, "request cancelled before verification")
 	}
 
 	if !s.engine.VerifyPoint(sig, witness, pk) {
