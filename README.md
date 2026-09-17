@@ -33,23 +33,38 @@ BlindVault enables clients to request unbiased blind credentials, verify that th
 - DLEQ proof of correct signing key usage
 - Epoch and credential class key derivation from a single master seed
 - Replay protection using deterministic nullifiers
-- Redis-backed nullifier store for production
-- JWT-protected issuance endpoint
-- Health endpoint for readiness checks
+- Redis-backed nullifier and revocation stores for production
+- JWT-protected issuance and admin endpoints
+- Health and Prometheus metrics endpoints
+- Optional demo endpoints for local testing and examples
 
 ## Quickstart
 
 1. Create `configs/config.yaml` or set environment variables.
-2. Run the server:
+2. Set a master seed using the preferred environment variables:
+
+```bash
+export BLINDVAULT_MASTER_SEED_HEX=<32-byte-hex-seed>
+# or, for file-based secret injection:
+export BLINDVAULT_SEED_FILE=/path/to/seed.txt
+```
+
+3. Run the server:
 
 ```bash
 go run ./cmd/server/main.go --config configs/config.yaml
 ```
 
-3. Validate health:
+4. Validate health:
 
 ```bash
 curl http://localhost:8080/health
+```
+
+5. Optional: scrape Prometheus metrics:
+
+```bash
+curl http://localhost:8080/metrics
 ```
 
 ## Documentation
@@ -98,9 +113,14 @@ go run scripts/generate_vectors.go --output docs/crypto_vectors.md
 
 ## Configuration
 
-You can override config values with environment variables:
+The server reads the YAML config and applies environment overrides. The preferred secret-loading paths are:
 
-- `MASTER_SEED_HEX`
+- `BLINDVAULT_MASTER_SEED_HEX` for in-memory secrets
+- `BLINDVAULT_SEED_FILE` for a secret file loaded from disk
+- `MASTER_SEED_HEX` is still accepted for compatibility, but the `BLINDVAULT_*` names are the safer and clearer path
+
+Common runtime overrides include:
+
 - `ACTIVE_EPOCH`
 - `SUPPORTED_EPOCHS`
 - `DST`
@@ -108,9 +128,14 @@ You can override config values with environment variables:
 - `REDIS_ADDR`
 - `REDIS_PASSWORD`
 - `REDIS_DB`
+- `REDIS_EXPIRATION`
+- `REVOCATION_REDIS_ADDR`
+- `REVOCATION_REDIS_DB`
 - `USE_MEMORY_STORE`
 - `LISTEN_ADDR`
+- `RATE_LIMIT_REQUESTS`
+- `RATE_LIMIT_BURST`
 
 ## Notes
 
-Use `use_memory_store: true` only for testing. Production deployment should use Redis and protect `MASTER_SEED_HEX` and `AUTH_SECRET` with a secrets manager.
+Use `use_memory_store: true` only for testing. Production deployment should use Redis, protect the master seed and JWT secret with a secrets manager, and keep admin authorization separate from application user identity flows.

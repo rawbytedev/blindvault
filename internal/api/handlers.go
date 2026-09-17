@@ -210,7 +210,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
-	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // metricsHandler serves the Prometheus metrics endpoint.

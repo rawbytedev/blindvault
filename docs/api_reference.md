@@ -233,7 +233,7 @@ Fields:
 
 ### `GET /health`
 
-Returns basic health status.
+Returns basic health status and checks the configured storage backends.
 
 #### Success response (200)
 
@@ -242,6 +242,26 @@ Returns basic health status.
   "status": "ok"
 }
 ```
+
+#### Failure response (503)
+
+```json
+{
+  "error": "storage unhealthy: ...",
+  "code": 503,
+  "details": "nullifier store ping failed"
+}
+```
+
+---
+
+### `GET /metrics`
+
+Serves Prometheus metrics for HTTP latency, issuance, consumption, nullifier storage, and revocation events.
+
+#### Success response (200)
+
+The response is Prometheus text exposition format rather than JSON.
 
 ---
 
@@ -256,6 +276,12 @@ All error responses (except those coming from middleware) use the same JSON enve
   "details": "<optional extra information>"
 }
 ```
+
+Additional operational states include:
+
+- `429 Too Many Requests` when the client exceeds the configured rate limits.
+- `503 Service Unavailable` when the configured storage backend is unhealthy and cannot respond to health checks.
+- `409 Conflict` when a credential is revoked or already redeemed.
 
 ---
 

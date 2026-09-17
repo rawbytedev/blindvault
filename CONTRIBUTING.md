@@ -52,4 +52,6 @@ go run scripts/generate_vectors.go --output docs/crypto_vectors.md
 ## Notes
 
 - `use_memory_store` is only suitable for test or local development.
-- The service currently requires JWT auth for credential issuance only.
+- The service requires JWT auth for issuance and admin routes; the admin routes additionally require the JWT `admin` claim.
+- Prefer `BLINDVAULT_MASTER_SEED_HEX` or `BLINDVAULT_SEED_FILE` for secret handling instead of embedding high-value secrets in config files or shell history.
+- Keep documentation in sync with API changes, configuration changes, and security assumptions before opening a PR.

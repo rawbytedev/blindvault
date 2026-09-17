@@ -105,8 +105,8 @@ This binds redemption to the epoch, credential class, and exact signature.
 - Signatures are only valid for the exact `witness` point computed from the message.
 - DLEQ proof ensures the server is signing with the derived key corresponding to the returned `public_key`.
 
-## TODO
+## Current limitations and future work
 
-- Add exact sample vectors after running `go run scripts/generate_vectors.go`.
-- Document hash-to-curve DST behavior in more detail.
-- Add cross-domain replay protection rationale.
+- Document hash-to-curve DST behavior and edge cases in more detail.
+- Clarify cross-domain replay protection assumptions and how class/epoch isolation interacts with key-rotation policies.
+- Add protocol versioning, stronger admin isolation, and optional metadata fields for application-specific credential attestations.

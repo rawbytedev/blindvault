@@ -28,19 +28,44 @@ auth_secret: "super-secret-token"
 redis_addr: "localhost:6379"
 redis_password: ""
 redis_db: 0
+redis_expiration: 2592000
+revocation_redis_addr: ""
+revocation_redis_password: ""
+revocation_redis_db: 1
 use_memory_store: false
+use_demo: true
+rate_limit_requests: 100
+rate_limit_burst: 20
 ```
 
 ### Environment variable overrides
 
-The server will override YAML values when the following environment variables are set:
+The server reads YAML values first and then applies environment overrides. The preferred secret-loading methods are:
 
-- `MASTER_SEED_HEX`
+- `BLINDVAULT_MASTER_SEED_HEX`
+- `BLINDVAULT_SEED_FILE`
+- `MASTER_SEED_HEX` (legacy compatibility)
+
+Additional runtime overrides supported by the service include:
+
 - `ACTIVE_EPOCH`
-- `REDIS_ADDR`
+- `SUPPORTED_EPOCHS`
+- `DST`
 - `AUTH_SECRET`
+- `REDIS_ADDR`
+- `REDIS_PASSWORD`
+- `REDIS_DB`
+- `REDIS_EXPIRATION`
+- `REVOCATION_REDIS_ADDR`
+- `REVOCATION_REDIS_PASSWORD`
+- `REVOCATION_REDIS_DB`
+- `USE_MEMORY_STORE`
+- `USE_DEMO`
+- `RATE_LIMIT_REQUESTS`
+- `RATE_LIMIT_BURST`
+- `LISTEN_ADDR`
 
-Additional config values may be loaded through the service config struct if extended.
+The server also uses the `BLINDVAULT_*` names in the production bootstrap path; the plain `MASTER_SEED_HEX` environment variable is still supported but should not be treated as the preferred long-term contract.
 
 ## Redis setup
 
@@ -118,7 +143,18 @@ Expected response:
 ## Production recommendations
 
 - Do not use `use_memory_store: true` in production.
-- Protect `MASTER_SEED_HEX` and `AUTH_SECRET` with secret management.
+- Protect the master seed and JWT secret with secret management; prefer `BLINDVAULT_MASTER_SEED_HEX` or `BLINDVAULT_SEED_FILE` to keep secret handling explicit.
 - Use Redis ACLs and TLS if available.
+- Split admin and application-auth concerns; admin routes require the JWT `admin` claim.
 - Expose only the required API endpoints through your ingress.
-- Monitor logs and request rates, especially issuance traffic.
+- Monitor logs, request rates, and Prometheus metrics, especially issuance traffic.
+
+## Operational endpoints
+
+BlindVault exposes both application and operational endpoints:
+
+- `GET /health` for readiness checks
+- `GET /metrics` for Prometheus scraping
+- `POST /v1/credential/issue` for blind issuance
+- `POST /v1/credential/consume` for redemption
+- `POST /v1/admin/revoke`, `DELETE /v1/admin/revoke`, and `GET /v1/admin/revocations` for administrative control
