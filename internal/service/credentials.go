@@ -22,15 +22,22 @@ type CredentialService struct {
 }
 
 func (s *CredentialService) Close() error {
-	if err := s.store.Close(); err != nil {
-		return err
+	if s == nil {
+		return nil
 	}
-	if s.config.RevocationRedisAddr != "" {
-		if err := s.revocationStore.Close(); err != nil {
-			return err
+
+	var Err error
+	if s.store != nil {
+		if err := s.store.Close(); err != nil && Err == nil {
+			Err = err
 		}
 	}
-	return nil
+	if s.revocationStore != nil {
+		if err := s.revocationStore.Close(); err != nil && Err == nil {
+			Err = err
+		}
+	}
+	return Err
 }
 
 func NewCredentialService(cfg *Config, store storage.NullifierStore, revocationStore storage.RevocationStore, metrics metrics.MetricsReporter) CredentialIssuer {

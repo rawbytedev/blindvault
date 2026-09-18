@@ -75,19 +75,6 @@ func loadConfig(path string) (*service.Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
-	// Override with environment variables (using env vars as source of truth)
-	if seed := os.Getenv("MASTER_SEED_HEX"); seed != "" {
-		cfg.MasterSeedHex = seed
-	}
-	if epoch := os.Getenv("ACTIVE_EPOCH"); epoch != "" {
-		cfg.ActiveEpoch = epoch
-	}
-	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
-		cfg.RedisAddr = addr
-	}
-	if secret := os.Getenv("AUTH_SECRET"); secret != "" {
-		cfg.AuthSecret = secret
-	}
-
+	cfg.ApplyEnvOverrides()
 	return &cfg, nil
 }

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -116,6 +117,31 @@ func TestConfig_MasterSeed(t *testing.T) {
 func TestConfig_DSTBytes(t *testing.T) {
 	cfg := &Config{DST: "BCIS-TEST"}
 	require.Equal(t, []byte("BCIS-TEST"), cfg.DSTBytes())
+}
+
+func TestConfig_ApplyEnvOverrides_PrefersCanonicalSeedEnv(t *testing.T) {
+	seedA := "aabbccdd"
+	seedB := "11223344"
+	t.Setenv("BLINDVAULT_MASTER_SEED_HEX", seedA)
+	t.Setenv("MASTER_SEED_HEX", seedB)
+	cfg := &Config{}
+	cfg.ApplyEnvOverrides()
+	require.Equal(t, seedA, cfg.MasterSeedHex)
+	require.Nil(t, cfg.MasterSeedEnclave)
+}
+
+func TestConfig_LoadMasterSeed_UsesPreferredEnvOrder(t *testing.T) {
+	seedHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+	t.Setenv("BLINDVAULT_MASTER_SEED_HEX", seedHex)
+	t.Setenv("MASTER_SEED_HEX", "1111111111111111111111111111111111111111111111111111111111111111")
+	cfg := &Config{}
+	require.NoError(t, cfg.LoadMasterSeed())
+	seedEnclave, err := cfg.MasterSeed()
+	require.NoError(t, err)
+	buf, err := seedEnclave.Open()
+	require.NoError(t, err)
+	defer buf.Close()
+	require.Equal(t, seedHex, hex.EncodeToString(buf.Bytes()))
 }
 
 func TestConfig_IsEpochSupported(t *testing.T) {

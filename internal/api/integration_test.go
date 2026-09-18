@@ -133,6 +133,39 @@ func TestHealthEndpoint(t *testing.T) {
 	require.Equal(t, "ok", body["status"])
 }
 
+func TestRateLimitMiddleware_UsesForwardedForHeader(t *testing.T) {
+	cfg := &service.Config{
+		ListenAddr:      ":8080",
+		MasterSeedHex:   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+		ActiveEpoch:     "2026-01",
+		SupportedEpochs: []string{"2026-01"},
+		DST:             "BCIS-TEST",
+		AuthSecret:      "test-secret",
+		UseMemoryStore:  true,
+		RateLimit:       1,
+		RateLimitBurst:  1,
+	}
+	server, err := NewServer(cfg)
+	require.NoError(t, err)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/limited", server.RateLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	for _, forwardedIP := range []string{"203.0.113.10", "198.51.100.25"} {
+		req, err := http.NewRequest(http.MethodGet, ts.URL+"/limited", nil)
+		require.NoError(t, err)
+		req.Header.Set("X-Forwarded-For", forwardedIP)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	}
+}
+
 func TestIssueValidRequest(t *testing.T) {
 	ts, cfg := setupTestServer(t)
 	defer ts.Close()

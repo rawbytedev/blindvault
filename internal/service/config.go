@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/rawbytedev/blindvault/pkg/securememory"
@@ -78,30 +79,106 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) ApplyEnvOverrides() {
+	if seed := os.Getenv("BLINDVAULT_MASTER_SEED_HEX"); seed != "" {
+		c.MasterSeedHex = seed
+	} else if seed := os.Getenv("MASTER_SEED_HEX"); seed != "" {
+		c.MasterSeedHex = seed
+	}
+	if epoch := os.Getenv("ACTIVE_EPOCH"); epoch != "" {
+		c.ActiveEpoch = epoch
+	}
+	if values := os.Getenv("SUPPORTED_EPOCHS"); values != "" {
+		c.SupportedEpochs = strings.Split(values, ",")
+		for i := range c.SupportedEpochs {
+			c.SupportedEpochs[i] = strings.TrimSpace(c.SupportedEpochs[i])
+		}
+	}
+	if dst := os.Getenv("DST"); dst != "" {
+		c.DST = dst
+	}
+	if secret := os.Getenv("AUTH_SECRET"); secret != "" {
+		c.AuthSecret = secret
+	}
+	if addr := os.Getenv("LISTEN_ADDR"); addr != "" {
+		c.ListenAddr = addr
+	}
+	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
+		c.RedisAddr = addr
+	}
+	if password := os.Getenv("REDIS_PASSWORD"); password != "" {
+		c.RedisPassword = password
+	}
+	if db := os.Getenv("REDIS_DB"); db != "" {
+		if parsed, err := strconv.Atoi(db); err == nil {
+			c.RedisDB = parsed
+		}
+	}
+	if expiration := os.Getenv("REDIS_EXPIRATION"); expiration != "" {
+		if parsed, err := strconv.Atoi(expiration); err == nil {
+			c.RedisExpiration = parsed
+		}
+	}
+	if addr := os.Getenv("REVOCATION_REDIS_ADDR"); addr != "" {
+		c.RevocationRedisAddr = addr
+	}
+	if password := os.Getenv("REVOCATION_REDIS_PASSWORD"); password != "" {
+		c.RevocationRedisPassword = password
+	}
+	if db := os.Getenv("REVOCATION_REDIS_DB"); db != "" {
+		if parsed, err := strconv.Atoi(db); err == nil {
+			c.RevocationRedisDB = parsed
+		}
+	}
+	if value := os.Getenv("USE_MEMORY_STORE"); value != "" {
+		if parsed, err := strconv.ParseBool(value); err == nil {
+			c.UseMemoryStore = parsed
+		}
+	}
+	if value := os.Getenv("USE_DEMO"); value != "" {
+		if parsed, err := strconv.ParseBool(value); err == nil {
+			c.UseDemo = parsed
+		}
+	}
+	if burst := os.Getenv("RATE_LIMIT_BURST"); burst != "" {
+		if parsed, err := strconv.Atoi(burst); err == nil {
+			c.RateLimitBurst = parsed
+		}
+	}
+	if rate := os.Getenv("RATE_LIMIT_REQUESTS"); rate != "" {
+		if parsed, err := strconv.Atoi(rate); err == nil {
+			c.RateLimit = parsed
+		}
+	}
+}
+
 func (c *Config) LoadMasterSeed() error {
 	var seedHex string
 	var source string
 
-	// 1. Try Env Var (Highest Priority)
+	// 1. Prefer explicit environment variables, with BLINDVAULT_* taking precedence.
 	if envSeed := os.Getenv("BLINDVAULT_MASTER_SEED_HEX"); envSeed != "" {
 		seedHex = envSeed
-		source = "environment variable"
+		source = "BLINDVAULT_MASTER_SEED_HEX"
 	} else if seedFile := os.Getenv("BLINDVAULT_SEED_FILE"); seedFile != "" {
-		// 2. Try Secret File
+		// 2. Try secret file.
 		data, err := os.ReadFile(seedFile)
 		if err != nil {
 			return fmt.Errorf("failed to read seed file %s: %w", seedFile, err)
 		}
 		seedHex = strings.TrimSpace(string(data))
-		source = "secret file"
+		source = "BLINDVAULT_SEED_FILE"
 		// Zero the file buffer
 		for i := range data {
 			data[i] = 0
 		}
+	} else if envSeed := os.Getenv("MASTER_SEED_HEX"); envSeed != "" {
+		seedHex = envSeed
+		source = "MASTER_SEED_HEX (legacy compatibility)"
 	} else if c.MasterSeedHex != "" {
-		// 3. Fallback to YAML (Deprecated)
+		// 3. Fallback to YAML config.
 		seedHex = c.MasterSeedHex
-		source = "config.yaml (DEPRECATED, use env or file)"
+		source = "config.yaml (deprecated)"
 		log.Warn().Msg("Loading master seed from config.yaml is insecure and deprecated!")
 		c.MasterSeedHex = ""
 	} else {

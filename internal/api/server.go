@@ -151,9 +151,16 @@ func (s *Server) Start() error {
 // Shutdown gracefully stops the HTTP server and closes backend resources.
 func (s *Server) Shutdown(ctx context.Context) error {
 	logger.Info(ctx).Msg("shutting down server")
-	if err := s.credentialService.Close(); err != nil {
-		logger.Error(ctx).Err(err).Msg("failed to close credential service")
+	if s == nil {
+		return nil
 	}
-
+	if s.credentialService != nil {
+		if err := s.credentialService.Close(); err != nil {
+			logger.Error(ctx).Err(err).Msg("failed to close credential service")
+		}
+	}
+	if s.httpServer == nil {
+		return nil
+	}
 	return s.httpServer.Shutdown(ctx)
 }

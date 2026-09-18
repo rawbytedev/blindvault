@@ -109,11 +109,9 @@ func (s *Server) LoggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 // RateLimitMiddleware applies per-IP rate limiting.
 func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ip := r.Header.Get("X-Forwarded-For")
-		if ip == "" {
-			ip = r.RemoteAddr
-		} else {
-			parts := strings.Split(ip, ",")
+		ip := r.RemoteAddr
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			parts := strings.Split(forwarded, ",")
 			ip = strings.TrimSpace(parts[0])
 		}
 		if !s.rateLimiter.Allow(ip) {
