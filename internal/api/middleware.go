@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rawbytedev/blindvault/pkg/apperr"
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
@@ -23,23 +24,24 @@ func (s *Server) AdminAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		ctx := r.Context()
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			s.respondError(ctx, w, http.StatusUnauthorized, "missing authorization header")
+			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "missing authorization header"), "None", "admin_auth")
 			return
 		}
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			s.respondError(ctx, w, http.StatusUnauthorized, "invalid authorization format")
+			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "invalid authorization format"), "", "admin_auth")
 			return
 		}
 		claims, err := s.jwtValidator.Validate(parts[1])
 		if err != nil {
-			s.respondError(ctx, w, http.StatusUnauthorized, "invalid token")
+
+			s.respondErr(ctx, w, apperr.Wrap(apperr.CodeUnauthorized, err, "invalid token"), "", "admin_auth")
 			return
 		}
 		// Check for admin claim
 		admin, ok := claims["admin"]
 		if !ok || admin != true {
-			s.respondError(ctx, w, http.StatusForbidden, "admin privileges required")
+			s.respondErr(ctx, w, apperr.New(apperr.CodeForbidden, "admin privileges required"), "", "admin_auth")
 			return
 		}
 		// Extract admin identity (subject)
@@ -59,19 +61,19 @@ func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		ctx := r.Context()
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			s.respondError(ctx, w, http.StatusUnauthorized, "missing authorization header")
+			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "missing authorization header"), "None", "auth_middleware")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			s.respondError(ctx, w, http.StatusUnauthorized, "invalid authorization format")
+			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "invalid authorization format"), "None", "auth_middleware")
 			return
 		}
 
 		claims, err := s.jwtValidator.Validate(parts[1])
 		if err != nil {
-			s.respondError(ctx, w, http.StatusUnauthorized, "invalid token")
+			s.respondErr(ctx, w, apperr.Wrap(apperr.CodeUnauthorized, err, "invalid token"), "None", "auth_middleware")
 			return
 		}
 
@@ -115,7 +117,7 @@ func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			ip = strings.TrimSpace(parts[0])
 		}
 		if !s.rateLimiter.Allow(ip) {
-			s.respondError(r.Context(), w, http.StatusTooManyRequests, "rate limit exceeded")
+			s.respondErr(r.Context(), w, apperr.New(apperr.CodeTooManyRequest, "rate limit exceeded"), "None", "ratelimit")
 			return
 		}
 		next(w, r)
@@ -129,7 +131,7 @@ func (s *Server) RecoveryMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if rec := recover(); rec != nil {
 				ctx := r.Context()
 				logger.Error(ctx).Interface("panic", rec).Msg("panic recovered")
-				s.respondError(ctx, w, http.StatusInternalServerError, "internal server error")
+				s.respondErr(ctx, w, apperr.New(apperr.CodeInternal, "internal server error"), "None", "recovery")
 			}
 		}()
 		next(w, r)

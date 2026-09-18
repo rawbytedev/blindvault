@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/rawbytedev/blindvault/pkg/apperr"
 )
 
 type DemoStore struct {
@@ -24,7 +25,7 @@ func (s *Server) handleStoreCredential(w http.ResponseWriter, r *http.Request) {
 		Ciphertext string `json:"ciphertext"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.respondError(r.Context(), w, http.StatusBadRequest, "invalid request")
+		s.respondErr(r.Context(), w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "None", "demo_store")
 		return
 	}
 	ticketID := uuid.New()
@@ -40,7 +41,7 @@ func (s *Server) handleRetrieveCredential(w http.ResponseWriter, r *http.Request
 	ciphertext, ok := s.demoStore.data[ticketID]
 	s.demoStore.mu.RUnlock()
 	if !ok {
-		s.respondError(r.Context(), w, http.StatusNotFound, "ticket not found")
+		s.respondErr(r.Context(), w, apperr.New(apperr.CodeNotFound, "ticket not found"), "None", "demo_store")
 		return
 	}
 	s.respondJSON(r.Context(), w, http.StatusOK, map[string]string{"ciphertext": ciphertext})

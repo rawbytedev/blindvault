@@ -3,53 +3,11 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/rawbytedev/blindvault/pkg/apperr"
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
-
-// statusIssue maps known issue-side errors to HTTP status codes and client messages.
-func statusIssue(err error) (int, string) {
-	if err != nil {
-		// Map known errors to appropriate status codes
-		switch {
-		case strings.Contains(err.Error(), "invalid blinded_message hex"):
-			return http.StatusBadRequest, "invalid blinded message hex"
-		case strings.Contains(err.Error(), "invalid blinded_message point"):
-			return http.StatusBadRequest, "invalid blinded message point"
-		case strings.Contains(err.Error(), "master seed error"):
-			// This is a server‑side config issue, treat as 500
-			return http.StatusInternalServerError, "server configuration error"
-		default:
-			return http.StatusInternalServerError, "issuance failed"
-		}
-	}
-	return http.StatusOK, "success"
-}
-
-// statusConsume maps known consume-side errors to HTTP status codes and client messages.
-func statusConsume(err error) (int, string) {
-	if err != nil {
-		// Map known errors to appropriate status codes
-		switch {
-		case strings.Contains(err.Error(), "unsupported key_epoch"):
-			return http.StatusBadRequest, "unsupported key_epoch"
-		case strings.Contains(err.Error(), "invalid signature"):
-			return http.StatusBadRequest, "invalid signature"
-		case strings.Contains(err.Error(), "invalid witness"):
-			return http.StatusBadRequest, "invalid witness"
-		case strings.Contains(err.Error(), "already redeemed"):
-			return http.StatusConflict, "credential already redeemed"
-		case strings.Contains(err.Error(), "master seed error"):
-			// Server-side config issue
-			return http.StatusInternalServerError, "server configuration error"
-		default:
-			return http.StatusInternalServerError, "consumption failed"
-		}
-	}
-	return http.StatusOK, "success"
-}
 
 // handleIssue handles POST /issue requests.
 func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
@@ -58,21 +16,21 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid issue request")
 		s.metrics.RecordIssuance("failure", "unknown")
-		s.respondError(ctx, w, http.StatusBadRequest, "invalid request body")
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "None", "issue")
 		return
 	}
 
-	if req.BlindedMessage == "" || req.CredentialClass == "" {
+	if err := ValidateIssueRequest(&req); err != nil {
+		logger.Warn(ctx).Err(err).Msg("invalid issue request data")
 		s.metrics.RecordIssuance("failure", req.CredentialClass)
-		s.respondError(ctx, w, http.StatusBadRequest, "missing required fields")
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "None", "issue")
 		return
 	}
 
 	result, err := s.credentialService.Issue(ctx, req.BlindedMessage, req.CredentialClass)
 	if err != nil {
-		statusCode, message := statusIssue(err)
 		s.metrics.RecordIssuance("failure", req.CredentialClass)
-		s.respondError(ctx, w, statusCode, message)
+		s.respondErr(ctx, w, err, req.CredentialClass, "issue")
 		return
 	}
 	s.metrics.RecordIssuance("success", req.CredentialClass)
@@ -96,21 +54,22 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid consume request")
 		s.metrics.RecordConsumption("failure", "unknown", "unknown")
-		s.respondError(ctx, w, http.StatusBadRequest, "invalid request body")
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "None", "consume")
 		return
 	}
 
-	if req.UnblindedSignature == "" || req.Witness == "" || req.CredentialClass == "" || req.KeyEpoch == "" {
+	if err := ValidateConsumeRequest(&req); err != nil {
+		logger.Warn(ctx).Err(err).Msg("invalid consume request data")
 		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
-		s.respondError(ctx, w, http.StatusBadRequest, "missing required fields")
+		// we avoid passing harmful invalidated class down
+		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "invalid request"), "None", "consume")
 		return
 	}
 
 	result, err := s.credentialService.Consume(ctx, req.UnblindedSignature, req.Witness, req.CredentialClass, req.KeyEpoch)
 	if err != nil {
-		statusCode, message := statusConsume(err)
 		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
-		s.respondError(ctx, w, statusCode, message)
+		s.respondErr(ctx, w, err, req.CredentialClass, "consume")
 		return
 	}
 
@@ -138,15 +97,15 @@ func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 		RevokedUntil    *time.Time `json:"revoked_until,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.respondError(ctx, w, http.StatusBadRequest, "invalid request")
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "None", "Revoke")
 		return
 	}
 	if req.CredentialClass == "" {
-		s.respondError(ctx, w, http.StatusBadRequest, "credential_class required")
+		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "credential_class required"), "None", "Revoke")
 		return
 	}
 	if req.Reason == "" {
-		s.respondError(ctx, w, http.StatusBadRequest, "reason required")
+		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "reason required"), req.CredentialClass, "Revoke")
 		return
 	}
 	// Get admin identity from context (set by admin auth middleware)
@@ -155,7 +114,7 @@ func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 	err := s.revocationStore.RevokeClass(req.CredentialClass, req.KeyEpoch, req.Reason, adminID, req.RevokedUntil)
 	if err != nil {
 		s.metrics.RecordRevocation("failure", req.CredentialClass)
-		s.respondError(ctx, w, http.StatusInternalServerError, "revocation failed: "+err.Error())
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "revocation failed"), req.CredentialClass, "Revoke")
 		return
 	}
 	s.metrics.RecordRevocation("success", req.CredentialClass)
@@ -170,18 +129,18 @@ func (s *Server) handleAdminUnrevoke(w http.ResponseWriter, r *http.Request) {
 		KeyEpoch        string `json:"key_epoch,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.respondError(ctx, w, http.StatusBadRequest, "invalid request")
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "None", "unrevoke")
 		return
 	}
 	if req.CredentialClass == "" {
-		s.respondError(ctx, w, http.StatusBadRequest, "credential_class required")
+		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "credential_class required"), "None", "unrevoke")
 		return
 	}
 
 	err := s.revocationStore.UnrevokeClass(req.CredentialClass, req.KeyEpoch)
 	if err != nil {
 		s.metrics.RecordUnrevocation("failure", req.CredentialClass)
-		s.respondError(ctx, w, http.StatusInternalServerError, "unrevoke failed: "+err.Error())
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "unrevoke failed"), "None", "unrevoke")
 		return
 	}
 	s.metrics.RecordUnrevocation("success", req.CredentialClass)
@@ -193,7 +152,7 @@ func (s *Server) handleAdminListRevocations(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	entries, err := s.revocationStore.ListRevocations()
 	if err != nil {
-		s.respondError(ctx, w, http.StatusInternalServerError, "list failed: "+err.Error())
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "list failed"), "None", "listrevoke")
 		return
 	}
 	s.respondJSON(ctx, w, http.StatusOK, map[string]interface{}{
@@ -206,7 +165,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// Check if store is healthy (e.g., Redis ping)
 	if err := s.credentialService.Ping(ctx); err != nil {
-		s.respondError(ctx, w, http.StatusServiceUnavailable, "storage unhealthy: "+err.Error())
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "storage unhealthy"), "None", "health_check")
 		return
 	}
 	s.respondJSON(ctx, w, http.StatusOK, map[string]string{"status": "ok"})

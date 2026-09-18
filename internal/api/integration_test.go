@@ -278,22 +278,12 @@ func TestIssueMissingFields(t *testing.T) {
 			defer resp.Body.Close()
 
 			// Expect 400 for missing fields, but for invalid hex we'll get 500.
-			if tt.name == "invalid blinded_message (not hex)" {
-				// the service will fail during deserialization and return 500,
-				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for invalid hex")
-				// check error message
-				var errResp ErrorResponse
-				err = json.NewDecoder(resp.Body).Decode(&errResp)
-				require.NoError(t, err)
-				require.Contains(t, errResp.Error, "invalid blinded message hex")
-			} else {
-				require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for missing fields")
-				// check error message
-				var errResp ErrorResponse
-				err = json.NewDecoder(resp.Body).Decode(&errResp)
-				require.NoError(t, err)
-				require.Contains(t, errResp.Error, "missing required fields")
-			}
+			// validation errors should return 400 and include 'invalid request'
+			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for invalid input")
+			var errResp ErrorResponse
+			err = json.NewDecoder(resp.Body).Decode(&errResp)
+			require.NoError(t, err)
+			require.Contains(t, errResp.Error, "invalid request")
 		})
 	}
 }

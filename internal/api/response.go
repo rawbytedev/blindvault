@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/rawbytedev/blindvault/pkg/apperr"
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
@@ -18,6 +19,18 @@ func (s *Server) respondJSON(ctx context.Context, w http.ResponseWriter, status 
 		logger.Error(ctx).Err(err).Msg("failed to encode JSON response")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
+}
+func (s *Server) respondErr(ctx context.Context, w http.ResponseWriter, err error, class, op string) {
+	code := apperr.CodeOf(err)
+	status := code.HTTPStatus()
+
+	// Log server-side errors loudly, client errors at warn level
+	if status >= 500 {
+		logger.Error(ctx).Err(err).Str("op", op).Msg("request failed")
+	} else {
+		logger.Warn(ctx).Err(err).Str("op", op).Msg("client error")
+	}
+	s.respondError(ctx, w, status, err.Error())
 }
 
 // respondError writes a standard error response.
