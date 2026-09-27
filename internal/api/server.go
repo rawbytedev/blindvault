@@ -31,7 +31,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	var nullifierStore storage.NullifierStore
 	var revocationStore storage.RevocationStore
 	var demo *DemoStore
-	metrics := GetMetrics()
+	metricsReporter := GetMetrics()
 	if cfg.UseMemoryStore {
 		nullifierStore = storage.NewInMemoryNullifierStore()
 		revocationStore = storage.NewInMemoryRevocationStore()
@@ -52,9 +52,12 @@ func NewServer(cfg *service.Config) (*Server, error) {
 			revocationStore = storage.NewRedisRevocationStore(redisClient)
 		}
 	}
-	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore, metrics)
-	jwtValidator := auth.NewJWTValidator(cfg.AuthSecret)
-	rateLimiter := NewRateLimiter(cfg.RateLimit, cfg.RateLimitBurst)
+	credService := service.NewCredentialService(cfg, nullifierStore, revocationStore, metricsReporter)
+	jwtconfig := auth.ValidatorConfig{
+		Secret: cfg.AuthSecret,
+	}
+	jwtValidator := auth.NewJWTValidator(jwtconfig)
+	rateLimiter := NewRateLimiter(cfg.RateLimit, cfg.RateLimitBurst, cfg.MaxClients)
 	if cfg.UseDemo {
 		demo = NewDemoStore()
 	}
@@ -63,7 +66,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		jwtValidator:      jwtValidator,
 		rateLimiter:       rateLimiter,
 		credentialService: credService,
-		metrics:           metrics,
+		metrics:           metricsReporter,
 		revocationStore:   revocationStore,
 		demoStore:         demo,
 	}
@@ -74,7 +77,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.AuthMiddleware(s.handleIssue),
+					s.RequireRole("issuer")(s.handleIssue),
 				),
 			),
 		),
@@ -90,7 +93,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.AdminAuthMiddleware(s.handleAdminRevoke),
+					s.RequireRole("admin")(s.handleAdminRevoke),
 				),
 			),
 		),
@@ -99,7 +102,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.AdminAuthMiddleware(s.handleAdminUnrevoke),
+					s.RequireRole("admin")(s.handleAdminUnrevoke),
 				),
 			),
 		),
@@ -108,7 +111,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.AdminAuthMiddleware(s.handleAdminListRevocations),
+					s.RequireRole("admin")(s.handleAdminListRevocations),
 				),
 			),
 		),

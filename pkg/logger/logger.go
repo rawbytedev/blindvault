@@ -19,6 +19,10 @@ func Warn(ctx context.Context) *zerolog.Event {
 	return FromContext(ctx).Warn()
 }
 
+func Fatal(ctx context.Context) *zerolog.Event {
+	return FromContext(ctx).Fatal()
+}
+
 func Error(ctx context.Context) *zerolog.Event {
 	return FromContext(ctx).Error()
 }

@@ -20,21 +20,20 @@ func ValidateHexLenght(s string, expectedBytes int) error {
 	}
 	return nil
 }
-
-// ValidateIssueRequest performs basic sanity checks on an IssueRequest.
-func ValidateIssueRequest(req *IssueRequest) error {
-	if req == nil {
+func (i *IssueRequest) Validate() error {
+	if i == nil {
 		return fmt.Errorf("request is nil")
 	}
-	if err := ValidateHexLenght(req.BlindedMessage, 48); err != nil {
+	if err := ValidateHexLenght(i.BlindedMessage, 48); err != nil {
 		return fmt.Errorf("blinded_message: %w", err)
 	}
-	if !validation.Class(req.CredentialClass) {
+	if !validation.Class(i.CredentialClass) {
 		return fmt.Errorf("credential_class: must match %s", validation.ReClass.String())
 	}
 	return nil
-} // ValidateConsumeRequest performs basic sanity checks on a ConsumeRequest.
-func ValidateConsumeRequest(req *ConsumeRequest) error {
+}
+
+func (req *ConsumeRequest) Validate() error {
 	if req == nil {
 		return fmt.Errorf("request is nil")
 	}

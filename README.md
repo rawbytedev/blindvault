@@ -40,7 +40,7 @@ BlindVault enables clients to request unbiased blind credentials, verify that th
 
 ## Quickstart
 
-1. Create `configs/config.yaml` or set environment variables.
+1. Create `configs/config.yaml` for local development or set the environment variables directly.
 2. Set a master seed using the preferred environment variables:
 
 ```bash
@@ -49,10 +49,12 @@ export BLINDVAULT_MASTER_SEED_HEX=<32-byte-hex-seed>
 export BLINDVAULT_SEED_FILE=/path/to/seed.txt
 ```
 
-3. Run the server:
+3. Run the server. The server accepts an optional `.env` file via `--env-file` and will apply YAML values before environment overrides unless `--env-override` is used:
 
 ```bash
 go run ./cmd/server/main.go --config configs/config.yaml
+# or load a local env file first
+# go run ./cmd/server/main.go --config configs/config.yaml --env-file .env --env-override
 ```
 
 4. Validate health:
@@ -113,29 +115,50 @@ go run scripts/generate_vectors.go --output docs/crypto_vectors.md
 
 ## Configuration
 
-The server reads the YAML config and applies environment overrides. The preferred secret-loading paths are:
+The server reads the YAML config first and then applies environment overrides. The preferred secret-loading paths are:
 
 - `BLINDVAULT_MASTER_SEED_HEX` for in-memory secrets
-- `BLINDVAULT_SEED_FILE` for a secret file loaded from disk
-- `MASTER_SEED_HEX` is still accepted for compatibility, but the `BLINDVAULT_*` names are the safer and clearer path
+- `BLINDVAULT_SEED_FILE` for a mounted or generated secret file
+
 
 Common runtime overrides include:
 
+- `BLINDVAULT_MODE`
 - `ACTIVE_EPOCH`
 - `SUPPORTED_EPOCHS`
 - `DST`
 - `AUTH_SECRET`
+- `JWT_ISSUER`
+- `JWT_AUDIENCE`
 - `REDIS_ADDR`
 - `REDIS_PASSWORD`
 - `REDIS_DB`
 - `REDIS_EXPIRATION`
 - `REVOCATION_REDIS_ADDR`
+- `REVOCATION_REDIS_PASSWORD`
 - `REVOCATION_REDIS_DB`
 - `USE_MEMORY_STORE`
+- `USE_DEMO`
 - `LISTEN_ADDR`
 - `RATE_LIMIT_REQUESTS`
 - `RATE_LIMIT_BURST`
+- `MAX_CLIENTS`
+
+### Development vs production
+
+The default development config intentionally includes a local seed, in-memory storage, and demo endpoints:
+
+```yaml
+mode: "development"
+listen_addr: ":8080"
+blindvault_master_seed_hex: "..."
+active_epoch: "2026-01"
+use_memory_store: true
+use_demo: true
+```
+
+Production mode rejects inline seed values in the YAML config, forbids `use_memory_store`, forbids `use_demo`, requires `jwt_issuer` and `jwt_audience`, and enforces stricter secret length requirements.
 
 ## Notes
 
-Use `use_memory_store: true` only for testing. Production deployment should use Redis, protect the master seed and JWT secret with a secrets manager, and keep admin authorization separate from application user identity flows.
+Use `use_memory_store: true` and `use_demo: true` only for local testing. Production deployment should use Redis, protect the master seed and JWT secret with a secrets manager, and keep admin authorization separate from application user identity flows.

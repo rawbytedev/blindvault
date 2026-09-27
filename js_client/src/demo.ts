@@ -37,15 +37,15 @@ async function deriveStorageKey(walletSignatureHex: string): Promise<Uint8Array>
 const vectors = {
   message: 'Hello BlindVault',
   dst: 'BCIS-V1-MESSAGE',
-  blindingFactorHex: '120824998855f78ce925508a179df690ac5a9aecd8e6259955e5b4a918657d83',
-  blindedHex: 'b70fc057d68a5027db5e6b72d608fdd640ae02061c30f1777fd71d19441f6bf2cdb4db498ca67cf9fb53943fe205ae61',
-  blindSignatureHex: 'a2786bea268dea3be3af71e9536c23828438bba24e066fa9324e4d3e0ec439951284afecef8b46bdd855c95fed2a5956',
-  publicKeyHex: '96f45d5f6cad1436ae595ad0957f3672abda331154c0d3a926225fe44898dd0a7e8d758901685632cef4138dad1424f41434f0aeb8dd6a07960bdc8651a6a69c48403c19fde9f6fc9244024946d40290bdd9eac8f85749dce9c5aa7a63c81795',
-  proofR1Hex: 'a516ae6ad1fe1095220ff6d79844367b768eb3682bd071af3b9e799f993bc8669953ad0a2048a544897bf8d8e13cdd2714188230a33c8be18975f9aefeb75cd204b30b24d788aba3dee4386936edcfdf1f10e49b34072415f95355423af71d2a',
-  proofR2Hex: 'a73257378b4a62d935c3a43e6efaadd3d07f08187605b9f08ea71c8760f33621aa0ef29004f5e0b3bcd308d0bb1f8c90',
-  proofSHex: '6081c67d4697f0a8a9a364896296f7e3558d30b0af9a7ce7249b064e24cc6986',
-  proofCHex: '6334500f62ec287aa92b6ec65f774dbc2f65c0f2519b5eb9820b3baba810c011',
-  unblindedHex: 'a13f83f912bc124e7e0367244ff2cc048d4bffc99d35ed45a2030af62cf448647aaf5382f0e5df46cd889603b75ae9c1',
+  blindingFactorHex: '38c68a61123fdfd471569e3fb9398b29a8f96d27b99f36677dc3b9163a618b49',
+  blindedHex: '833e3ac5d47ada8cee5863a307efb95c7e0977d41c9e6daa6440a72698b8718a711a46402b0d45e7e6add79bb5d8ac30',
+  blindSignatureHex: '85783f115941aaa09eff29813ac90503e79e754d2799a8aac59449b05b8b3502a7743989bdeafc9807d9512dddb18036',
+  publicKeyHex: 'a4da95ea6b9dfd5e05a0d25d163a6a486896815a5add989faa1076208f8c856ab7e833ba738ba161b9e689c5921804e30ddd554b3ad8ce2afbab07bb3d55b7d7fecfb241d9627011c1aa868fd6cdd051d6a10ca3b48c39d69bd2691cc6a680fd',
+  proofR1Hex: '85d6243bef8d93ab37ccdede6a4c64f38d70764138e6c1e6f9e9f8db7ba74e9d839e6dcebdfe248347ab6ef6d6d45b3b0a9522ba939b3a64f63e18e660e13be108a13b51c5dc4a20d1935f540f48665e3a33e2279a67905d6bf140e1e0e8d22b',
+  proofR2Hex: 'b823955d8c7db67ecca035a4bd5e500a54bce51948e129bae3eda8a8831bd8e2ff87b0f24f1cfd1839c998873728a6fa',
+  proofSHex: '625d4c2f936f6906f751eceaaf918f222cd9a140753eec51d23fc3c40e2e6c62',
+  proofCHex: '729c4288334a23db9aa254c8011a3c5c0515d12fc41f94afce8798b90f1aacaa',
+  unblindedHex: '94ad305dcec12eb0c3ce694be76d827319ccace5c5e6c456193b55a76d4e36447840d781ac7b9c39663138ad5cf5cefa',
 };
 
 let lastBlind: { blinded: Uint8Array; witness: Uint8Array; blindingFactor: Uint8Array } | null = null;
@@ -233,10 +233,15 @@ async function performBlind(
   const msg = new TextEncoder().encode(inputs.message);
   const encDst = new TextEncoder().encode(inputs.dst);
 
-  // Generate JWT if secret provided
+  // Generate JWT if secret provided; allow specifying issuer/audience via inputs
   const tokenInput = document.getElementById(`${elementPrefix}-token`) as HTMLInputElement;
   if (inputs.secret && !tokenInput.value) {
-    const jwt = await generateJWT(inputs.secret, inputs.credentialClass);
+    const jwt = await generateJWT(inputs.secret, {
+      credentialClass: inputs.credentialClass,
+      issuer: (document.getElementById(`${elementPrefix}-issuer`) as HTMLInputElement)?.value || undefined,
+      audience: (document.getElementById(`${elementPrefix}-audience`) as HTMLInputElement)?.value || undefined,
+      roles: ["issuer"]
+    });
     tokenInput.value = jwt;
     state.jwtToken = jwt;
   } else if (tokenInput.value) {

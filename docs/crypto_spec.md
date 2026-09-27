@@ -13,13 +13,14 @@ The server derives epoch- and class-specific signing keys from a single master s
 - Credential class: application namespace, e.g. `tier_gold`.
 
 ### Derivation formula
+"\x00" : is used as a separator
 
 ```
 DeriveSigningKey(master_seed, epoch, credential_class):
-  info = "BCIS" || "SIGNING_KEY" || epoch || credential_class
+  info = "BCIS" +"\x00"+ "SIGNING_KEY"+"\x00"+ epoch +"\x00"+ credential_class
   prk = HKDF-Extract(salt="BCIS-V1-SALT", IKM=master_seed)
   okm = HKDF-Expand(prk, info, 64)
-  sk = int64(okm) mod r
+  sk = blst.Scalar.HashTo(okm, []byte("BCIS-V1-SCALAR"))
 ```
 
 This produces a BLS12-381 scalar used for blind signing.
@@ -86,9 +87,11 @@ The server derives `pk` for the same epoch/class and checks:
 ### Nullifier construction
 
 The nullifier is computed as:
+"\x00" : is used as separator
+"\x01": the trailing byte is the version
 
 ```
-nullifier = SHA256("BCIS-V1" || epoch || credential_class || Serialize(σ))
+nullifier = SHA256("BCIS-V1" + "\x00" + epoch + "\x00" + credential_class + "\x00" + Serialize(σ) + "\x01")
 ```
 
 This binds redemption to the epoch, credential class, and exact signature.

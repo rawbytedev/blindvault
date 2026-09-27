@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/awnumar/memguard v0.23.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/stretchr/testify v1.11.1

@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto/rand"
 	"errors"
+	"math/big"
 
 	blst "github.com/supranational/blst/bindings/go"
 )
@@ -47,6 +48,16 @@ func (s *BlstScalar) PubKey() PointG2 {
 func NewBlstScalarFromBytes(b []byte) (Scalar, error) {
 	if len(b) != 32 {
 		return nil, errors.New("scalar must be 32 bytes")
+	}
+	// Interpret as big-endian integer and ensure it's in [0, r-1]
+	v := new(big.Int).SetBytes(b)
+	// Order r for BLS12-381 scalar field (Fr)
+	// r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+	rHex := "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
+	r := new(big.Int)
+	r.SetString(rHex, 16)
+	if v.Cmp(r) >= 0 {
+		return nil, errors.New("scalar is out of range")
 	}
 	var s blst.Scalar
 	s.FromBEndian(b)

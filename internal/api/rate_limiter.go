@@ -2,7 +2,7 @@
 package api
 
 import (
-	"strings"
+	"net"
 	"sync"
 	"time"
 
@@ -15,6 +15,8 @@ type RateLimiter struct {
 	limit   rate.Limit
 	burst   int
 	clients map[string]*LimitClient
+	// cap maximum number of tracked clients to prevent unbounded memory growth
+	maxClients int
 }
 
 type LimitClient struct {
@@ -26,7 +28,7 @@ type LimitClient struct {
 // NewRateLimiter creates a rate limiter with:
 //   - requestsPerMinute: max requests per minute per IP
 //   - burst: max burst size (should be <= requestsPerMinute, but can be larger for spikes)
-func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
+func NewRateLimiter(requestsPerMinute int, burst int, maxClients int) *RateLimiter {
 	if requestsPerMinute == 0 && burst == 0 {
 		return &RateLimiter{}
 	}
@@ -34,9 +36,10 @@ func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
 		burst = requestsPerMinute
 	}
 	return &RateLimiter{
-		limit:   rate.Limit(float64(requestsPerMinute) / 60.0), // per second
-		burst:   burst,
-		clients: make(map[string]*LimitClient),
+		limit:      rate.Limit(float64(requestsPerMinute) / 60.0), // per second
+		burst:      burst,
+		clients:    make(map[string]*LimitClient),
+		maxClients: maxClients,
 	}
 }
 
@@ -47,11 +50,26 @@ func (rl *RateLimiter) Allow(ip string) bool {
 	if rl.clients == nil {
 		return true
 	}
-	if strings.Contains(ip, ":") {
-		ip = strings.Split(ip, ":")[0]
+	// Normalize host:strip port if present using SplitHostPort
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
 	}
 	limiter, exists := rl.clients[ip]
 	if !exists {
+		// If we've reached max clients, evict the oldest entry
+		if rl.maxClients > 0 && len(rl.clients) >= rl.maxClients {
+			var oldestKey string
+			var oldest time.Time = time.Now()
+			for k, c := range rl.clients {
+				if c.LastUpdated.Before(oldest) {
+					oldest = c.LastUpdated
+					oldestKey = k
+				}
+			}
+			if oldestKey != "" {
+				delete(rl.clients, oldestKey)
+			}
+		}
 		limiter = &LimitClient{ // Allocate the struct first!
 			Client:      ip,
 			Limit:       rate.NewLimiter(rl.limit, rl.burst),

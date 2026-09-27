@@ -475,13 +475,8 @@ Instead, it provides a focused service that applications can build upon whenever
 
 Because the implementation is already complete, developers can evaluate the code, inspect the cryptographic specification, review the tests and integrate the service directly into their own applications.
 
-The requested funding supports reusable infrastructure that is intended to remain available to the broader Zcash ecosystem rather than serving a single application.
+If BlindVault succeeds, the primary outcome should not be that one more project uses blind signatures. It should be that future Zcash applications can focus on their own problems while depending on a common, open-source implementation of privacy-preserving credential issuance.
 
-If BlindVault succeeds, the primary outcome should not be that one more project uses blind signatures.
-
-It should be that future Zcash applications no longer need to implement this component themselves.
-
-They can focus on solving their own problems while depending on a common, open-source implementation of privacy-preserving credential issuance.
 
 ## Appendix A — Threat Model
 

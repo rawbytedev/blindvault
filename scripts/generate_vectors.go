@@ -38,11 +38,11 @@ func main() {
 	defer f.Close()
 
 	seed, err := hex.DecodeString(masterSeedHex)
-	masterSeed := securememory.NewEnclaveFromBytes(seed)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to decode master seed: %v\n", err)
 		os.Exit(1)
 	}
+	masterSeed := securememory.NewEnclaveFromBytes(seed)
 
 	engine := crypto.NewBLS12Engine()
 

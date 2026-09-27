@@ -75,7 +75,11 @@ func (s *RedisRevocationStore) IsRevoked(class, epoch string) (bool, *Revocation
 	// Check class+epoch specific revocation first
 	key := s.revocationKey(class, epoch)
 	data, err := s.client.Get(s.ctx, key).Bytes()
-	if err == nil {
+	if err != nil {
+		if err != redis.Nil {
+			return false, nil, err
+		}
+	} else {
 		var entry RevocationEntry
 		if err := json.Unmarshal(data, &entry); err == nil {
 			if entry.RevokedUntil != nil && time.Now().UTC().After(*entry.RevokedUntil) {
@@ -88,7 +92,11 @@ func (s *RedisRevocationStore) IsRevoked(class, epoch string) (bool, *Revocation
 	// Check class-wide revocation (all epochs)
 	key = s.revocationKey(class, "")
 	data, err = s.client.Get(s.ctx, key).Bytes()
-	if err == nil {
+	if err != nil {
+		if err != redis.Nil {
+			return false, nil, err
+		}
+	} else {
 		var entry RevocationEntry
 		if err := json.Unmarshal(data, &entry); err == nil {
 			return true, &entry, nil

@@ -1,11 +1,12 @@
 package api
 
 import (
-	"context"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/rawbytedev/blindvault/internal/auth"
 	"github.com/rawbytedev/blindvault/pkg/apperr"
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
@@ -18,69 +19,39 @@ const (
 
 )
 
-// AdminAuthMiddleware validates JWT and ensures the token has admin privileges.
-func (s *Server) AdminAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "missing authorization header"), "None", "admin_auth")
-			return
+// RequireRole — requires a specific role (or admin).
+func (s *Server) RequireRole(role string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			claims, err := s.authenticate(r)
+			if err != nil {
+				s.respondErr(r.Context(), w, err, "auth")
+				return
+			}
+			if !claims.HasRole(role) {
+				s.respondErr(r.Context(), w,
+					apperr.Newf(apperr.CodeForbidden, "role %q required", role), "authz")
+				return
+			}
+			next(w, r.WithContext(auth.WithClaims(r.Context(), claims)))
 		}
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "invalid authorization format"), "", "admin_auth")
-			return
-		}
-		claims, err := s.jwtValidator.Validate(parts[1])
-		if err != nil {
-
-			s.respondErr(ctx, w, apperr.Wrap(apperr.CodeUnauthorized, err, "invalid token"), "", "admin_auth")
-			return
-		}
-		// Check for admin claim
-		admin, ok := claims["admin"]
-		if !ok || admin != true {
-			s.respondErr(ctx, w, apperr.New(apperr.CodeForbidden, "admin privileges required"), "", "admin_auth")
-			return
-		}
-		// Extract admin identity (subject)
-		adminID, _ := claims["sub"].(string)
-		if adminID == "" {
-			adminID = "unknown"
-		}
-		ctx = context.WithValue(ctx, adminKey, adminID)
-		ctx = context.WithValue(ctx, claimsKey, claims)
-		next(w, r.WithContext(ctx))
 	}
 }
 
-// AuthMiddleware validates JWT for protected endpoints.
-func (s *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "missing authorization header"), "None", "auth_middleware")
-			return
-		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			s.respondErr(ctx, w, apperr.New(apperr.CodeUnauthorized, "invalid authorization format"), "None", "auth_middleware")
-			return
-		}
-
-		claims, err := s.jwtValidator.Validate(parts[1])
-		if err != nil {
-			s.respondErr(ctx, w, apperr.Wrap(apperr.CodeUnauthorized, err, "invalid token"), "None", "auth_middleware")
-			return
-		}
-
-		// Store claims in context for later use (e.g., audit logging)
-		ctx = context.WithValue(ctx, claimsKey, claims)
-		next(w, r.WithContext(ctx))
+func (s *Server) authenticate(r *http.Request) (*auth.Claims, error) {
+	h := r.Header.Get("Authorization")
+	if h == "" {
+		return nil, apperr.New(apperr.CodeUnauthorized, "missing authorization header")
 	}
+	parts := strings.SplitN(h, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return nil, apperr.New(apperr.CodeUnauthorized, "invalid authorization format")
+	}
+	claims, err := s.jwtValidator.Validate(parts[1])
+	if err != nil {
+		return nil, apperr.Wrap(apperr.CodeUnauthorized, err, "invalid token")
+	}
+	return claims, nil
 }
 
 // LoggerMiddleware injects a request-scoped logger with request_id.
@@ -112,12 +83,23 @@ func (s *Server) LoggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func (s *Server) RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip := r.RemoteAddr
+		// Normalize remote host (strip port if present)
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			ip = host
+		}
+		// Only trust X-Forwarded-For when the immediate peer is a private/trusted proxy
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-			parts := strings.Split(forwarded, ",")
-			ip = strings.TrimSpace(parts[0])
+			// check if remote is loopback or private
+			remoteHost := ip
+			parsed := net.ParseIP(remoteHost)
+
+			if parsed != nil && (parsed.IsLoopback() || parsed.IsPrivate()) {
+				parts := strings.Split(forwarded, ",")
+				ip = strings.TrimSpace(parts[0])
+			}
 		}
 		if !s.rateLimiter.Allow(ip) {
-			s.respondErr(r.Context(), w, apperr.New(apperr.CodeTooManyRequest, "rate limit exceeded"), "None", "ratelimit")
+			s.respondErr(r.Context(), w, apperr.New(apperr.CodeTooManyRequest, "rate limit exceeded"), "ratelimit")
 			return
 		}
 		next(w, r)
@@ -131,7 +113,7 @@ func (s *Server) RecoveryMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if rec := recover(); rec != nil {
 				ctx := r.Context()
 				logger.Error(ctx).Interface("panic", rec).Msg("panic recovered")
-				s.respondErr(ctx, w, apperr.New(apperr.CodeInternal, "internal server error"), "None", "recovery")
+				s.respondErr(ctx, w, apperr.New(apperr.CodeInternal, "internal server error"), "recovery")
 			}
 		}()
 		next(w, r)

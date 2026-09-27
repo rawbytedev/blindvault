@@ -56,17 +56,39 @@ export async function decryptCredential(ciphertextHex: string, storageKey: Uint8
 // JWT generation using HMAC-SHA256
 // ------------------------------------------------------------------
 
-export async function generateJWT(secret: string, credentialClass: string): Promise<string> {
+export type JWTOptions = {
+  credentialClass?: string;
+  issuer?: string;
+  audience?: string;
+  roles?: string[];
+  admin?: boolean;
+  expSeconds?: number;
+};
+
+export async function generateJWT(secret: string, opts?: string | JWTOptions): Promise<string> {
   if (!secret) return '';
+
+  // Backwards compatibility: allow credentialClass as string
+  let options: JWTOptions = {};
+  if (typeof opts === 'string') {
+    options.credentialClass = opts;
+  } else if (opts) {
+    options = opts;
+  }
 
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    sub: credentialClass,
+  const exp = options.expSeconds ? now + options.expSeconds : now + 300;
+
+  const payload: any = {
+    sub: options.credentialClass || 'client',
     iat: now,
-    exp: now + 300, // 5 minutes expiry
-    iss: 'blindvault-client',
+    exp: exp,
+    iss: options.issuer || 'blindvault-client',
   };
+  if (options.audience) payload.aud = options.audience;
+  if (options.roles) payload.roles = options.roles;
+  if (options.admin) payload.admin = true;
 
   const base64UrlEncode = (obj: object): string => {
     const json = JSON.stringify(obj);

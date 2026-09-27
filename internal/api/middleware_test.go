@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rawbytedev/blindvault/internal/service"
@@ -22,12 +23,15 @@ func TestAdminAuthMiddleware(t *testing.T) {
 	adminToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":   "admin",
 		"admin": true,
+		"exp":   time.Now().Add(10 * time.Second).Unix(),
 	})
 	adminTokenString, _ := adminToken.SignedString([]byte(cfg.AuthSecret))
 
 	// Regular token
 	userToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": "user",
+		"sub":   "user",
+		"exp":   time.Now().Add(10 * time.Second).Unix(),
+		"roles": []string{"user"},
 	})
 	userTokenString, _ := userToken.SignedString([]byte(cfg.AuthSecret))
 
@@ -35,12 +39,13 @@ func TestAdminAuthMiddleware(t *testing.T) {
 		name       string
 		authHeader string
 		wantStatus int
+		role       string
 	}{
-		{"no auth", "", http.StatusUnauthorized},
-		{"invalid format", "Basic token", http.StatusUnauthorized},
-		{"invalid token", "Bearer invalid", http.StatusUnauthorized},
-		{"user token", "Bearer " + userTokenString, http.StatusForbidden},
-		{"admin token", "Bearer " + adminTokenString, http.StatusOK},
+		{"no auth", "", http.StatusUnauthorized, ""},
+		{"invalid format", "Basic token", http.StatusUnauthorized, ""},
+		{"invalid token", "Bearer invalid", http.StatusUnauthorized, ""},
+		{"user token", "Bearer " + userTokenString, http.StatusForbidden, "admin"},
+		{"admin token", "Bearer " + adminTokenString, http.StatusOK, "admin"},
 	}
 
 	for _, tt := range tests {
@@ -51,7 +56,7 @@ func TestAdminAuthMiddleware(t *testing.T) {
 			}
 			rr := httptest.NewRecorder()
 
-			handler := server.AdminAuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			handler := server.RequireRole(tt.role)(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 

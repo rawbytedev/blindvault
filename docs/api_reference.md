@@ -7,6 +7,7 @@
 Issue a blind credential and receive a blind signature with proof.
 
 - **Authentication:** required via `Authorization: Bearer <token>`
+- **Required JWT role/claim:** the token must include the `issuer` role or the `admin` claim/role
 - **Request Content-Type:** `application/json`
 
 #### Request body
@@ -103,7 +104,7 @@ Fields:
 Revoke a credential class (optionally limited to a specific epoch).  
 All future redemptions for that class (or class+epoch) will be rejected until the revocation is lifted.
 
-- **Authentication:** required, JWT must contain the claim `"admin": true`
+- **Authentication:** required, JWT must contain the `admin` role or the claim `"admin": true`
 - **Request Content-Type:** `application/json`
 
 #### Request body
@@ -146,7 +147,7 @@ Fields:
 
 Remove an active revocation, allowing credentials of that class/epoch to be redeemed again.
 
-- **Authentication:** required, JWT must contain `"admin": true`
+- **Authentication:** required, JWT must contain the `admin` role or the claim `"admin": true`
 - **Request Content-Type:** `application/json`
 
 #### Request body
@@ -185,7 +186,7 @@ Fields:
 
 List all currently active revocations (including permanent and time‑limited ones).
 
-- **Authentication:** required, JWT must contain `"admin": true`
+- **Authentication:** required, JWT must contain the `admin` role or the claim `"admin": true`
 - **Request Content-Type:** (none)
 
 #### Success response (200)

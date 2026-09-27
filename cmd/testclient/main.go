@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/rawbytedev/blindvault/pkg/crypto"
 
@@ -121,7 +122,9 @@ func main() {
 
 func generateJWT(secret string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": "test-client",
+		"sub":   "test-client",
+		"roles": []string{"issuer"},
+		"exp":   jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 	})
 	tokenString, _ := token.SignedString([]byte(secret))
 	return tokenString

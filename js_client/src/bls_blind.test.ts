@@ -22,14 +22,14 @@ describe('blindvault JS client SDK', () => {
         const message = new TextEncoder().encode('Hello BlindVault');
         const dst = new TextEncoder().encode('BCIS-V1-MESSAGE');
         const witness = hexToBytes('a61653518870b2b7d2def1f78a8ab21f17f9b9bc6d7ca9a0d744f6150227311acd50d3bdc6ffa8dc52567ee4c6e5dcb7');
-        const blinded = hexToBytes('a8b66ce1f5a1b415cb93a94d2387411c7628e0fb575dbb0c41b782832595c22a675d8bad8b2134ac5dbbdc3fbce6602e');
-        const blindSignature = hexToBytes('a3c8833609f701404702683ab67a324ae304accd087ee598ad35a2cf4f9290f7a5b83bc62a1474f5d05a7ccfbf2964bb');
-        const publicKey = hexToBytes('96f45d5f6cad1436ae595ad0957f3672abda331154c0d3a926225fe44898dd0a7e8d758901685632cef4138dad1424f41434f0aeb8dd6a07960bdc8651a6a69c48403c19fde9f6fc9244024946d40290bdd9eac8f85749dce9c5aa7a63c81795');
+        const blinded = hexToBytes('833e3ac5d47ada8cee5863a307efb95c7e0977d41c9e6daa6440a72698b8718a711a46402b0d45e7e6add79bb5d8ac30');
+        const blindSignature = hexToBytes('85783f115941aaa09eff29813ac90503e79e754d2799a8aac59449b05b8b3502a7743989bdeafc9807d9512dddb18036');
+        const publicKey = hexToBytes('a4da95ea6b9dfd5e05a0d25d163a6a486896815a5add989faa1076208f8c856ab7e833ba738ba161b9e689c5921804e30ddd554b3ad8ce2afbab07bb3d55b7d7fecfb241d9627011c1aa868fd6cdd051d6a10ca3b48c39d69bd2691cc6a680fd');
         const proof = {
-            r1: hexToBytes('8cb14854bb4daf5e74ee19e39edb84b0ae2553be3866e8420ca95bee522487cd252d5d4c9c9f3d6767e7d7c733e4cba919c56fda85760332ee20af69eb7affec14c2d20727efecbfdd39736bcf089d46e3da782033eb0821e866a9a2a254292d'),
-            r2: hexToBytes('a40b52f34d6cec3ec294726ea97a92807d636a2a117ea6ec5882637a8fe703a2b75d96431bfe9066a7dfba2ac4db2b36'),
-            s: hexToBytes('038b102b9b80f1256caa186022789ea4a0f1ff404ad22c2b686f9260e069bbf5'),
-            c: hexToBytes('6d4f47de45a45250e2c16381b096d50c8b0c537147460ec1c47f4bd5604258ec'),
+            r1: hexToBytes('85d6243bef8d93ab37ccdede6a4c64f38d70764138e6c1e6f9e9f8db7ba74e9d839e6dcebdfe248347ab6ef6d6d45b3b0a9522ba939b3a64f63e18e660e13be108a13b51c5dc4a20d1935f540f48665e3a33e2279a67905d6bf140e1e0e8d22b'),
+            r2: hexToBytes('b823955d8c7db67ecca035a4bd5e500a54bce51948e129bae3eda8a8831bd8e2ff87b0f24f1cfd1839c998873728a6fa'),
+            s: hexToBytes('625d4c2f936f6906f751eceaaf918f222cd9a140753eec51d23fc3c40e2e6c62'),
+            c: hexToBytes('729c4288334a23db9aa254c8011a3c5c0515d12fc41f94afce8798b90f1aacaa'),
         };
 
         const result = blind(message, dst);

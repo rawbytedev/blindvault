@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/rawbytedev/blindvault/pkg/apperr"
 	"github.com/rawbytedev/blindvault/pkg/errors"
 	"github.com/rawbytedev/blindvault/pkg/metrics"
 
@@ -131,93 +132,95 @@ func (s *CredentialService) Issue(ctx context.Context, blindedHex, class string)
 // Consume verifies and consumes an unblinded credential.
 func (s *CredentialService) Consume(ctx context.Context, sigHex, witnessHex, class, epoch string) (*ConsumeResult, error) {
 	// 1. Validate inputs
+	// Note: input passed are already validated those additional checks
+	// are for unexpected events
 	if class == "" {
-		return nil, errors.New(ctx, "credential_class cannot be empty")
+		return nil, apperr.New(apperr.CodeInvalidArgument, "credential_class is required")
 	}
 	if epoch == "" {
-		return nil, errors.New(ctx, "key_epoch cannot be empty")
+		return nil, apperr.New(apperr.CodeInvalidArgument, "key_epoch is required")
 	}
 
 	// 2. Verify epoch is supported
 	if !s.config.IsEpochSupported(epoch) {
-		return nil, errors.New(ctx, "unsupported key_epoch")
+		return nil, apperr.New(apperr.CodeInvalidArgument, "unsupported key_epoch")
 	}
 	if s.revocationStore != nil {
 		revoked, entry, err := s.revocationStore.IsRevoked(class, epoch)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, "revocation check failed")
+			return nil, apperr.Wrap(apperr.CodeUnavailable, err, "revocation check failed")
 		}
 		if revoked {
 			msg := "credential class revoked"
 			if entry != nil && entry.Reason != "" {
 				msg += ": " + entry.Reason
 			}
-			return &ConsumeResult{Valid: false, Error: msg}, nil
+			return &ConsumeResult{Error: msg, Status: ConsumeRevoked}, nil
 		}
 	}
 
 	// 3. Decode signature and witness
 	sigBytes, err := hex.DecodeString(sigHex)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "invalid signature hex")
+		return nil, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid signature hex")
 	}
 	witnessBytes, err := hex.DecodeString(witnessHex)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "invalid witness hex")
+		return nil, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid witness hex")
 	}
 
 	sig, err := crypto.DeserializeG1(sigBytes)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "invalid signature point")
+		return nil, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid signature point")
 	}
 	witness, err := crypto.DeserializeG1(witnessBytes)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "invalid witness point")
+		return nil, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid witness point")
 	}
 
 	// 4. Derive signing key for the presented epoch and class
 	masterSeed, err := s.config.MasterSeed()
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "master seed error")
+		return nil, apperr.Wrap(apperr.CodeInternal, err, "master seed error")
 	}
 
 	sk, err := crypto.DeriveSigningKey(masterSeed, epoch, class)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "key derivation failed")
+		return nil, apperr.Wrap(apperr.CodeInternal, err, "key derivation failed")
 	}
 	pk := sk.PubKey()
 
 	// 5. Verify the signature against the witness using VerifyPoint
 	//    This checks: e(σ, G₂) == e(Y, PK)
 	if err := helper.CheckContext(ctx); err != nil {
-		return nil, errors.Wrap(ctx, err, "request cancelled before verification")
+		return nil, apperr.Wrap(apperr.CodeUnavailable, err, "request cancelled before verification")
 	}
 
 	if !s.engine.VerifyPoint(sig, witness, pk) {
-		return nil, errors.New(ctx, "invalid signature")
+		return nil, apperr.New(apperr.CodeInvalidArgument, "invalid signature")
 	}
 
 	// 6. Compute nullifier and check replay
 	nullifier := crypto.ComputeNullifier(epoch, class, sig)
 	isNew, err := s.store.CheckAndStore(ctx, nullifier)
 	if err != nil {
-		s.nullifierstore("failure", err.Error())
-		return nil, fmt.Errorf("nullifier store error: %w", err)
+		s.nullifierstore("check: failure", err.Error())
+		return nil, apperr.Wrap(apperr.CodeUnavailable, err, "nullifier store error")
 	}
 
 	if !isNew {
-		s.nullifierstore("success: duplicate", "Already redeemed")
-		return &ConsumeResult{Valid: false, Error: "credential already redeemed"}, nil
+		s.nullifierstore("check", "duplicate")
+		return &ConsumeResult{Error: "credential already redeemed", Status: ConsumeDuplicate}, nil
 	}
-	s.nullifierstore("success", "Unique")
+	s.nullifierstore("check", "unique")
 
-	return &ConsumeResult{Valid: true}, nil
+	return &ConsumeResult{Status: ConsumeAccepted}, nil
 }
 
-// Helper
-func (s *CredentialService) nullifierstore(ops, result string) {
+// Metrics
+func (s *CredentialService) nullifierstore(state string, result string) {
 	if s.metrics != nil {
-		s.metrics.RecordNullifierStore(ops, result)
+		s.metrics.RecordNullifierStore(state, result)
 	}
 }
 
@@ -235,8 +238,15 @@ type DLEQProofSerialized struct {
 	S  string
 	C  string
 }
+type ConsumeStatus string
+
+const (
+	ConsumeAccepted  ConsumeStatus = "accepted"
+	ConsumeDuplicate ConsumeStatus = "duplicate"
+	ConsumeRevoked   ConsumeStatus = "revoked"
+)
 
 type ConsumeResult struct {
-	Valid bool
-	Error string
+	Status ConsumeStatus
+	Error  string
 }

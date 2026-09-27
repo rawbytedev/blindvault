@@ -43,7 +43,7 @@ func TestCredentialService_Consume_Revoked(t *testing.T) {
 	// First consume should succeed
 	result, err := svc.Consume(context.Background(), sigHex, witnessHex, "test", "2026-01")
 	require.NoError(t, err)
-	require.True(t, result.Valid)
+	require.True(t, result.Status == ConsumeAccepted, "First consume should be accepted")
 
 	// Revoke the class
 	err = revocationStore.RevokeClass("test", "2026-01", "test revocation", "admin", nil)
@@ -52,7 +52,7 @@ func TestCredentialService_Consume_Revoked(t *testing.T) {
 	// Second consume should fail due to revocation
 	result, err = svc.Consume(context.Background(), sigHex, witnessHex, "test", "2026-01")
 	require.NoError(t, err)
-	require.False(t, result.Valid)
+	require.True(t, result.Status == ConsumeRevoked, "Second consume should be rejected due to revocation")
 	require.Contains(t, result.Error, "revoked")
 }
 

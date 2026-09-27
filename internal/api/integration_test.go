@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/rawbytedev/blindvault/internal/auth"
 	"github.com/rawbytedev/blindvault/internal/service"
 	"github.com/rawbytedev/blindvault/pkg/crypto"
 
@@ -36,12 +38,16 @@ func setupTestServer(t *testing.T) (*httptest.Server, *service.Config) {
 
 // generateJWT creates a valid JWT for testing.
 func generateJWT(secret string) string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": "test-client",
-		"iat": 1516239022,
-	})
-	tokenString, _ := token.SignedString([]byte(secret))
-	return tokenString
+	claims := &auth.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   "test-client",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+		Roles: []string{"issuer", "admin"},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	s, _ := tok.SignedString([]byte(secret))
+	return s
 }
 
 // createBlindedMessage blinds a message for testing.
@@ -815,12 +821,15 @@ func TestAdminRevoke(t *testing.T) {
 	adminToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":   "admin",
 		"admin": true,
+		"exp":   jwt.NewNumericDate(time.Now().Add(15 * time.Second)),
+		"roles": []string{"admin"},
 	})
 	adminTokenString, _ := adminToken.SignedString([]byte(cfg.AuthSecret))
 
 	// Regular user token (should fail)
 	userToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": "user",
+		"exp": jwt.NewNumericDate(time.Now().Add(5 * time.Second)),
 	})
 	userTokenString, _ := userToken.SignedString([]byte(cfg.AuthSecret))
 

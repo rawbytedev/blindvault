@@ -1,5 +1,6 @@
+mode: "development"
 listen_addr: ":8080"
-master_seed_hex: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+blindvault_master_seed_hex: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 active_epoch: "2026-01"
 supported_epochs:
   - "2026-01"

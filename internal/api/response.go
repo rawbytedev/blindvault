@@ -20,16 +20,20 @@ func (s *Server) respondJSON(ctx context.Context, w http.ResponseWriter, status 
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
-func (s *Server) respondErr(ctx context.Context, w http.ResponseWriter, err error, class, op string) {
+func (s *Server) respondErr(ctx context.Context, w http.ResponseWriter, err error, op string) {
 	code := apperr.CodeOf(err)
 	status := code.HTTPStatus()
 
-	// Log server-side errors loudly, client errors at warn level
 	if status >= 500 {
-		logger.Error(ctx).Err(err).Str("op", op).Msg("request failed")
-	} else {
-		logger.Warn(ctx).Err(err).Str("op", op).Msg("client error")
+		// Log full detail server-side.
+		logger.Error(ctx).Err(err).Str("op", op).Msg("server error")
+		// Return generic message to client.
+		s.respondError(ctx, w, status, http.StatusText(status))
+		return
 	}
+
+	// 4xx: message is about the client's input, safe to surface.
+	logger.Warn(ctx).Err(err).Str("op", op).Msg("client error")
 	s.respondError(ctx, w, status, err.Error())
 }
 
@@ -45,12 +49,6 @@ func (s *Server) respondError(ctx context.Context, w http.ResponseWriter, status
 	if len(details) > 0 && details[0] != "" {
 		resp.Details = details[0]
 	}
-
-	// Add request ID to response header for correlation
-	if reqID := w.Header().Get("X-Request-ID"); reqID != "" {
-		w.Header().Set("X-Request-ID", reqID)
-	}
-
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		logger.Error(ctx).Err(err).Msg("failed to encode error response")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
