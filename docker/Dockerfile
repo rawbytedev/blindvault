@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.26.5-alpine3.20 AS builder
+FROM golang:1.26.5-alpine AS builder
 
 # Install build dependencies for BLST (CGO)
 RUN apk add --no-cache gcc musl-dev
@@ -20,10 +20,10 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o /blindvault ./cmd/server
 RUN CGO_ENABLED=1 GOOS=linux go build -o /testclient ./cmd/testclient
 
 # Runtime stage
-FROM alpine:3.20
+FROM alpine:latest
 
 # Install runtime dependencies (ca-certificates for HTTPS, libc6-compat for musl CGO support)
-RUN apk add --no-cache ca-certificates libc6-compat curl
+RUN apk add --no-cache ca-certificates libc6-compat
 
 # Create a non-root user for security
 RUN adduser -D -u 1000 blindvault
