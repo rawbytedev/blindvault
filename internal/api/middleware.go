@@ -11,14 +11,6 @@ import (
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
 
-type contextKey string
-
-const (
-	claimsKey contextKey = "claims"
-	adminKey  contextKey = "adminKey" // used in handlers
-
-)
-
 // RequireRole — requires a specific role (or admin).
 func (s *Server) RequireRole(role string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
