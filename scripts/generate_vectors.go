@@ -17,10 +17,10 @@ const (
 	credentialClass = "tier_gold"
 	message         = "Hello BlindVault"
 	dst             = "BCIS-V1-MESSAGE"
-	randomScalar    = "38c68a61123fdfd471569e3fb9398b29a8f96d27b99f36677dc3b9163a618b49" // value is generaly random
+	randomScalar    = "38c68a61123fdfd471569e3fb9398b29a8f96d27b99f36677dc3b9163a618b49" // value is generally random
 )
 
-func main() {
+func main() { // converage:ignore
 	outputPath := flag.String("output", "docs/crypto_vectors.md", "path to write generated test vectors")
 	random := flag.Bool("rand", false, "whether to use random scalar or not, default: false")
 	flag.Parse()

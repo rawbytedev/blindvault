@@ -26,4 +26,8 @@ jobs:
       - name: Check test coverage
         uses: vladopajic/go-test-coverage@v2.20.0
         with:
-          config: .testcoverage.yml
+          profile: cover.out
+          threshold-file: 70
+          threshold-package: 80
+          threshold-total: 95
+          
