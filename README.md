@@ -4,6 +4,9 @@
   <a href="https://github.com/rawbytedev/blindvault/actions/workflows/ci.yml">
     <img src="https://github.com/rawbytedev/blindvault/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
+   <a href="https://github.com/rawbytedev/blindvault/actions/workflows/gitleaks.yml">
+    <img src="https://github.com/rawbytedev/blindvault/actions/workflows/gitleaks.yml/badge.svg" alt="env" />
+  </a>
   <a href="https://goreportcard.com/report/github.com/rawbytedev/blindvault">
     <img src="https://goreportcard.com/badge/github.com/rawbytedev/blindvault" alt="Go Report Card" />
   </a>
