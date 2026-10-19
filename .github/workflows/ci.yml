@@ -1,5 +1,7 @@
 name: CI
 
+permissions: {}
+
 on:
   push:
     branches: [ main, master ]
@@ -13,6 +15,8 @@ jobs:
   # -------- Lint --------
   lint:
     name: Lint
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,11 +34,13 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m ./...
 
-  # -------- Unit Tests (Linux) --------
+# -------- Unit Tests (Linux) --------
   test-linux:
-    name: Unit Tests (Linux)
+    name: Unit Tests + Coverage (Linux)
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint]
 
     services:
       redis:
@@ -57,10 +63,28 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Run unit tests with coverage
+      - name: Run tests with coverage
         run: |
-          go test -short -v -cover -coverprofile=coverage.out ./...
-          go tool cover -html=coverage.out -o coverage.html
+          go test -v -cover -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
+
+      - name: coverage details
+        run: |
+          echo "## Coverage (total)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -func=coverage.out | tail -1 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check test coverage
+        uses: vladopajic/go-test-coverage@v2.20.0
+        with:
+          profile: coverage.out
+          threshold-file: 70
+          threshold-package: 80
+          threshold-total: 95
+          
+
+      - name: Generate coverage report
+        run: go tool cover -html=coverage.out -o coverage.html
 
       - name: Generate crypto test vectors
         run: |
@@ -68,35 +92,33 @@ jobs:
           echo "Generated vectors:"
           cat docs/crypto_vectors.md
 
-      - name: Run benchmarking tests
-        run: |
-          go test -short -bench=. -run=^$ -benchmem ./... | tee bench-output.txt
+      - name: Run benchmark tests
+        run: go test -short -bench=. -run=^$ -benchmem ./... | tee bench-output.txt
 
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: bench-output
           path: bench-output.txt
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: |
             coverage.out
             coverage.html
 
-      - name: Upload crypto vectors as artifact (for inspection)
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: crypto-vectors
           path: docs/crypto_vectors.md
 
-  # -------- Unit Tests (Windows) --------
+# -------- Unit Tests (Windows) --------
   test-windows:
     name: Unit Tests (Windows)
+    permissions:
+      contents: read
     runs-on: windows-latest
-    needs: lint
+    needs: [lint]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -131,8 +153,10 @@ jobs:
   # -------- Docker Integration (E2E) --------
   docker-test:
     name: Docker E2E Tests
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
-    needs: test-linux   # only run if unit tests pass
+    needs: test-linux   # only run if atleast one unit tests pass
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

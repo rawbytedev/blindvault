@@ -1,7 +1,17 @@
 name: gitleaks
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
 jobs:
   scan:
+    permissions:
+      contents: read          
+      pull-requests: read     
+      security-events: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

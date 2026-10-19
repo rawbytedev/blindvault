@@ -1,5 +1,7 @@
 name: Manual Release Build
 
+permissions: {}
+
 on:
   workflow_dispatch:
     inputs:
@@ -14,6 +16,8 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: read
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
     strategy:
@@ -61,6 +65,8 @@ jobs:
 
   js-sdk:
     name: Build JavaScript SDK package
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -89,10 +95,11 @@ jobs:
 
   release:
     name: Create draft release and attach binaries
-    needs: [build, js-sdk]
-    runs-on: ubuntu-latest
     permissions:
       contents: write  # required to create releases
+    needs: [build, js-sdk]
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,15 +109,14 @@ jobs:
         with:
           path: artifacts
 
-
-      - name: Create Draft Release and Upload Assets
-        env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-            gh release create ${{ github.event.inputs.version }} \
-            --title "Release ${{ github.event.inputs.version }}" \
-            --draft=${{ github.event.inputs.draft }} \
-            --generate-notes \
-            artifacts/**/bv-* \
-            artifacts/**/blindvault-* \
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          draft: ${{ github.event.inputs.draft }}
+          generate_release_notes: true
+          files: |
+            artifacts/**/bv-*
+            artifacts/**/blindvault-*
             artifacts/**/*.tgz
