@@ -13,7 +13,7 @@ import (
 var schemaValidator = validator.New()
 
 func init() {
-	schemaValidator.RegisterValidation("hex_len", func(fl validator.FieldLevel) bool {
+	if err := schemaValidator.RegisterValidation("hex_len", func(fl validator.FieldLevel) bool {
 		field, ok := fl.Field().Interface().(string)
 		if !ok || strings.TrimSpace(field) == "" {
 			return false
@@ -27,23 +27,28 @@ func init() {
 			return false
 		}
 		return len(decoded) == expected
-	})
-
-	schemaValidator.RegisterValidation("class", func(fl validator.FieldLevel) bool {
+	}); err != nil {
+		panic(fmt.Sprintf("failed to register hex validation: %v", err))
+	}
+	if err := schemaValidator.RegisterValidation("class", func(fl validator.FieldLevel) bool {
 		field, ok := fl.Field().Interface().(string)
 		if !ok {
 			return false
 		}
 		return Class(field)
-	})
-
-	schemaValidator.RegisterValidation("epoch", func(fl validator.FieldLevel) bool {
+	}); err != nil {
+		panic(fmt.Sprintf("failed to register class validation: %v", err))
+	}
+	if err := schemaValidator.RegisterValidation("epoch", func(fl validator.FieldLevel) bool {
 		field, ok := fl.Field().Interface().(string)
 		if !ok {
 			return false
 		}
 		return Epoch(field)
-	})
+	}); err != nil {
+		panic(fmt.Sprintf("failed to register epoch validation: %v", err))
+	}
+
 }
 
 func ValidateStruct(value any) error {
