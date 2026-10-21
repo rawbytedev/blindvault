@@ -2,11 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
-	"time"
 
 	"github.com/rawbytedev/blindvault/internal/auth"
 	"github.com/rawbytedev/blindvault/internal/service"
+	"github.com/rawbytedev/blindvault/internal/validation"
 	"github.com/rawbytedev/blindvault/pkg/apperr"
 	"github.com/rawbytedev/blindvault/pkg/logger"
 )
@@ -14,9 +15,6 @@ import (
 // handleIssue handles POST /issue requests.
 func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	defer r.Body.Close()
-
 	var req IssueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid issue request")
@@ -25,7 +23,7 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := req.Validate(); err != nil {
+	if err := validation.ValidateIssueRequest(req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid issue request data")
 		s.metrics.RecordIssuance("failure", req.CredentialClass)
 		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "issue")
@@ -63,7 +61,7 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := req.Validate(); err != nil {
+	if err := validation.ValidateConsumeRequest(req); err != nil {
 		logger.Warn(ctx).Err(err).Msg("invalid consume request data")
 		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
 		// we avoid passing harmful invalidated class down
@@ -74,7 +72,12 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 	result, err := s.credentialService.Consume(ctx, req.UnblindedSignature, req.Witness, req.CredentialClass, req.KeyEpoch)
 	if err != nil {
 		s.metrics.RecordConsumption("failure", req.CredentialClass, req.KeyEpoch)
-		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid consume credentials"), "consume")
+		var aerr *apperr.Error
+		if errors.As(err, &aerr) {
+			s.respondErr(ctx, w, aerr, "consume")
+		} else {
+			s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInternal, err, "consume failed"), "consume")
+		}
 		return
 	}
 	switch result.Status {
@@ -106,7 +109,6 @@ func (s *Server) handleConsume(w http.ResponseWriter, r *http.Request) {
 // handleAdminRevoke handles POST /v1/admin/revoke
 func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 	// Only allow authenticated admins (use stronger auth than JWT)
-	// use the same JWT but with admin scope for now
 	ctx := r.Context()
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
@@ -116,24 +118,16 @@ func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	adminID := claims.Subject
-	var req struct {
-		CredentialClass string     `json:"credential_class"`
-		KeyEpoch        string     `json:"key_epoch,omitempty"`
-		Reason          string     `json:"reason"`
-		RevokedUntil    *time.Time `json:"revoked_until,omitempty"`
-	}
+	var req AdminRevokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "Revoke")
 		return
 	}
-	if req.CredentialClass == "" {
-		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "credential_class required"), "Revoke")
+	if err := validation.ValidateAdminRevokeRequest(req); err != nil {
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "Revoke")
 		return
 	}
-	if req.Reason == "" {
-		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "reason required"), "Revoke")
-		return
-	}
+
 	err := s.revocationStore.RevokeClass(req.CredentialClass, req.KeyEpoch, req.Reason, adminID, req.RevokedUntil)
 	if err != nil {
 		s.metrics.RecordRevocation("failure", req.CredentialClass)
@@ -147,16 +141,20 @@ func (s *Server) handleAdminRevoke(w http.ResponseWriter, r *http.Request) {
 // handleAdminUnrevoke handles DELETE /v1/admin/revoke
 func (s *Server) handleAdminUnrevoke(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var req struct {
-		CredentialClass string `json:"credential_class"`
-		KeyEpoch        string `json:"key_epoch,omitempty"`
+	_, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		// Unreachable if the middleware is wired correctly. Treat as internal.
+		s.respondErr(ctx, w,
+			apperr.New(apperr.CodeInternal, "claims missing from context"), "revoke")
+		return
 	}
+	var req AdminUnrevokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "unrevoke")
 		return
 	}
-	if req.CredentialClass == "" {
-		s.respondErr(ctx, w, apperr.New(apperr.CodeInvalidArgument, "credential_class required"), "unrevoke")
+	if err := validation.ValidateAdminUnrevokeRequest(req); err != nil {
+		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "unrevoke")
 		return
 	}
 

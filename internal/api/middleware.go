@@ -46,6 +46,15 @@ func (s *Server) authenticate(r *http.Request) (*auth.Claims, error) {
 	return claims, nil
 }
 
+func (s *Server) BodyLimitMiddleware(limit int64) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+			next(w, r)
+		}
+	}
+}
+
 // LoggerMiddleware injects a request-scoped logger with request_id.
 func (s *Server) LoggerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -1,10 +1,12 @@
 // Package api defines the HTTP request and response models for BlindVault.
 package api
 
+import "time"
+
 // ----- Issue Request -----
 type IssueRequest struct {
-	BlindedMessage  string `json:"blinded_message"`  // hex-encoded compressed G1 point
-	CredentialClass string `json:"credential_class"` // e.g., "tier_gold"
+	BlindedMessage  string `json:"blinded_message" validate:"required,hex_len=48"` // hex-encoded compressed G1 point
+	CredentialClass string `json:"credential_class" validate:"required,class"`     // e.g., "tier_gold"
 }
 
 type IssueResponse struct {
@@ -16,10 +18,10 @@ type IssueResponse struct {
 
 // ----- Consume Request -----
 type ConsumeRequest struct {
-	UnblindedSignature string `json:"unblinded_signature"` // hex-encoded compressed G1 point (σ)
-	Witness            string `json:"witness"`             // hex-encoded compressed G1 point (Y = H(msg))
-	CredentialClass    string `json:"credential_class"`    // must match issuance
-	KeyEpoch           string `json:"key_epoch"`           // must match issuance
+	UnblindedSignature string `json:"unblinded_signature" validate:"required,hex_len=48"` // hex-encoded compressed G1 point (σ)
+	Witness            string `json:"witness" validate:"required,hex_len=48"`             // hex-encoded compressed G1 point (Y = H(msg))
+	CredentialClass    string `json:"credential_class" validate:"required,class"`         // must match issuance
+	KeyEpoch           string `json:"key_epoch" validate:"required,epoch"`                // must match issuance
 }
 
 type ConsumeResponse struct {
@@ -39,4 +41,25 @@ type DLEQProof struct {
 	R2 string `json:"r2"` // compressed G1 point
 	S  string `json:"s"`  // hex-encoded scalar
 	C  string `json:"c"`  // hex-encoded scalar
+}
+
+type AdminRevokeRequest struct {
+	CredentialClass string     `json:"credential_class" validate:"required,class"`
+	KeyEpoch        string     `json:"key_epoch"         validate:"omitempty,epoch"`
+	Reason          string     `json:"reason"            validate:"required"`
+	RevokedUntil    *time.Time `json:"revoked_until,omitempty" validate:"omitempty,gt"`
+}
+
+type AdminUnrevokeRequest struct {
+	CredentialClass string `json:"credential_class" validate:"required,class"`
+	KeyEpoch        string `json:"key_epoch" validate:"omitempty,epoch"`
+}
+
+type AdminListRevocationsRequest struct {
+	CredentialClass string `json:"credential_class" validate:"required,class"`
+	KeyEpoch        string `json:"key_epoch" validate:"required,epoch"`
+}
+
+type AdminListRevocationsResponse struct {
+	Revoked bool `json:"revoked"`
 }

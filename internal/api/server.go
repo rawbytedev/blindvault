@@ -77,7 +77,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.RequireRole("issuer")(s.handleIssue),
+					s.BodyLimitMiddleware(1<<20)(
+						s.RequireRole("issuer")(s.handleIssue),
+					),
 				),
 			),
 		),
@@ -85,7 +87,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 	mux.HandleFunc("POST /v1/credential/consume",
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
-				s.RateLimitMiddleware(s.handleConsume),
+				s.RateLimitMiddleware(
+					s.BodyLimitMiddleware(1<<20)(s.handleConsume),
+				),
 			),
 		),
 	)
@@ -93,7 +97,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.RequireRole("admin")(s.handleAdminRevoke),
+					s.BodyLimitMiddleware(1<<20)(
+						s.RequireRole("admin")(s.handleAdminRevoke),
+					),
 				),
 			),
 		),
@@ -102,7 +108,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.RequireRole("admin")(s.handleAdminUnrevoke),
+					s.BodyLimitMiddleware(1<<20)(
+						s.RequireRole("admin")(s.handleAdminUnrevoke),
+					),
 				),
 			),
 		),
@@ -111,7 +119,9 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		s.RecoveryMiddleware(
 			s.LoggerMiddleware(
 				s.RateLimitMiddleware(
-					s.RequireRole("admin")(s.handleAdminListRevocations),
+					s.BodyLimitMiddleware(1<<20)(
+						s.RequireRole("admin")(s.handleAdminListRevocations),
+					),
 				),
 			),
 		),

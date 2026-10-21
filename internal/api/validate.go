@@ -1,53 +1,23 @@
 package api
 
-import (
-	"encoding/hex"
-	"fmt"
+import "github.com/rawbytedev/blindvault/internal/validation"
 
-	"github.com/rawbytedev/blindvault/internal/validation"
-)
-
-func ValidateHexLenght(s string, expectedBytes int) error {
-	if s == "" {
-		return fmt.Errorf("empty value")
-	}
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		return fmt.Errorf("invalid hex: %w", err)
-	}
-	if len(b) != expectedBytes {
-		return fmt.Errorf("invalid length: expected %d bytes, got %d", expectedBytes, len(b))
-	}
-	return nil
-}
-func (i *IssueRequest) Validate() error {
-	if i == nil {
-		return fmt.Errorf("request is nil")
-	}
-	if err := ValidateHexLenght(i.BlindedMessage, 48); err != nil {
-		return fmt.Errorf("blinded_message: %w", err)
-	}
-	if !validation.Class(i.CredentialClass) {
-		return fmt.Errorf("credential_class: must match %s", validation.ReClass.String())
-	}
-	return nil
+func ValidateIssueRequest(req IssueRequest) error {
+	return validation.ValidateIssueRequest(req)
 }
 
-func (req *ConsumeRequest) Validate() error {
-	if req == nil {
-		return fmt.Errorf("request is nil")
-	}
-	if err := ValidateHexLenght(req.UnblindedSignature, 48); err != nil {
-		return fmt.Errorf("unblinded_signature: %w", err)
-	}
-	if err := ValidateHexLenght(req.Witness, 48); err != nil {
-		return fmt.Errorf("witness: %w", err)
-	}
-	if !validation.Class(req.CredentialClass) {
-		return fmt.Errorf("credential_class: must match %s", validation.ReClass.String())
-	}
-	if !validation.Epoch(req.KeyEpoch) {
-		return fmt.Errorf("key_epoch: must be YYYY-MM format")
-	}
-	return nil
+func ValidateConsumeRequest(req ConsumeRequest) error {
+	return validation.ValidateConsumeRequest(req)
+}
+
+func ValidateAdminRevokeRequest(req AdminRevokeRequest) error {
+	return validation.ValidateAdminRevokeRequest(req)
+}
+
+func ValidateAdminUnrevokeRequest(req AdminUnrevokeRequest) error {
+	return validation.ValidateAdminUnrevokeRequest(req)
+}
+
+func ValidateAdminListRevocationsRequest(req AdminListRevocationsRequest) error {
+	return validation.ValidateAdminListRevocationsRequest(req)
 }
