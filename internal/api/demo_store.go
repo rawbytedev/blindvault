@@ -24,7 +24,7 @@ func (s *Server) handleStoreCredential(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Ciphertext string `json:"ciphertext"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Ciphertext == "" {
 		s.respondErr(r.Context(), w, apperr.Wrap(apperr.CodeInvalidArgument, err, "invalid request"), "demo_store")
 		return
 	}
