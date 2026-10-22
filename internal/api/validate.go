@@ -17,7 +17,3 @@ func ValidateAdminRevokeRequest(req AdminRevokeRequest) error {
 func ValidateAdminUnrevokeRequest(req AdminUnrevokeRequest) error {
 	return validation.ValidateAdminUnrevokeRequest(req)
 }
-
-func ValidateAdminListRevocationsRequest(req AdminListRevocationsRequest) error {
-	return validation.ValidateAdminListRevocationsRequest(req)
-}

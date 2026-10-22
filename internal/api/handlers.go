@@ -172,6 +172,7 @@ func (s *Server) handleAdminUnrevoke(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAdminListRevocations(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	entries, err := s.revocationStore.ListRevocations()
+
 	if err != nil {
 		s.respondErr(ctx, w, apperr.Wrap(apperr.CodeInvalidArgument, err, "list failed"), "listrevoke")
 		return

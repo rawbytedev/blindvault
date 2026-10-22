@@ -54,12 +54,3 @@ type AdminUnrevokeRequest struct {
 	CredentialClass string `json:"credential_class" validate:"required,class"`
 	KeyEpoch        string `json:"key_epoch" validate:"omitempty,epoch"`
 }
-
-type AdminListRevocationsRequest struct {
-	CredentialClass string `json:"credential_class" validate:"required,class"`
-	KeyEpoch        string `json:"key_epoch" validate:"required,epoch"`
-}
-
-type AdminListRevocationsResponse struct {
-	Revoked bool `json:"revoked"`
-}
