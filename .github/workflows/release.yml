@@ -103,11 +103,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history + tags
+          fetch-tags: true
+
       
       - name: Download all built binaries and SDK
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Generate release notes from commits
+        id: changelog
+        env:
+          CURRENT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+          # Most recent tag
+          PREV_TAG=$(git tag --sort=-v:refname | grep -vxF -- "$CURRENT_VERSION" | head -n1 || true)
+
+          if [ -z "${PREV_TAG:-}" ]; then
+            echo "No previous tag found — listing all commits."
+            RANGE="HEAD"
+            HEADER="## What's Changed\n\n_(no previous release found — showing full history)_"
+          else
+            echo "Previous tag: $PREV_TAG"
+            RANGE="${PREV_TAG}..HEAD"
+            HEADER="## What's Changed since \`${PREV_TAG}\`"
+          fi
+
+          {
+            printf "%b\n\n" "$HEADER"
+            git log "$RANGE" --no-merges --pretty=format:'- %s (%h) — @%an'
+            echo
+          } > RELEASE_BODY.md
+
+          echo "----- RELEASE_BODY.md -----"
+          cat RELEASE_BODY.md
+          echo "---------------------------"
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -115,7 +150,7 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
           draft: ${{ github.event.inputs.draft }}
-          generate_release_notes: true
+          body_path: RELEASE_BODY.md
           files: |
             artifacts/**/bv-*
             artifacts/**/blindvault-*
