@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -202,4 +203,12 @@ func TestConfig_ProductionAccumulatesErrors(t *testing.T) {
 	require.Contains(t, err.Error(), "jwt_issuer is required")
 	require.Contains(t, err.Error(), "jwt_audience is required")
 	require.Contains(t, err.Error(), "blindvault_master_seed_hex from config file(YAML) is forbidden")
+}
+
+func TestConfigMode(t *testing.T) {
+	assert.True(t, ModeProduction.IsProduction(), "Expected Production mode to return True")
+	assert.True(t, ModeDevelopment.IsValid(), "Expected mode to return True")
+	assert.True(t, ModeTest.IsValid(), "Expected mode to return True")
+	var data Mode = "Dummy"
+	assert.False(t, data.IsValid(), "Expected unknown mode to return False")
 }
