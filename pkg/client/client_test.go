@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rawbytedev/blindvault/internal/api"
 	"github.com/rawbytedev/blindvault/pkg/client"
 	"github.com/rawbytedev/blindvault/pkg/crypto"
 
@@ -128,12 +129,7 @@ func TestClient_Redeem(t *testing.T) {
 	// Mock server that expects a consume request and returns success
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/credential/consume", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			UnblindedSignature string `json:"unblinded_signature"`
-			Witness            string `json:"witness"`
-			CredentialClass    string `json:"credential_class"`
-			KeyEpoch           string `json:"key_epoch"`
-		}
+		var req api.ConsumeRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
