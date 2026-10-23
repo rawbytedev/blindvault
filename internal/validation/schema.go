@@ -73,7 +73,3 @@ func ValidateAdminRevokeRequest(value any) error {
 func ValidateAdminUnrevokeRequest(value any) error {
 	return ValidateStruct(value)
 }
-
-func ValidateAdminListRevocationsRequest(value any) error {
-	return ValidateStruct(value)
-}
