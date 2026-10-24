@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/hex"
+	"os"
 	"strings"
 	"testing"
 
@@ -211,4 +212,72 @@ func TestConfigMode(t *testing.T) {
 	assert.True(t, ModeTest.IsValid(), "Expected mode to return True")
 	var data Mode = "Dummy"
 	assert.False(t, data.IsValid(), "Expected unknown mode to return False")
+}
+
+func TestLoadMasterSeed(t *testing.T) {
+	// Set the environment variable for testing
+	dir := t.TempDir()
+	openFile := dir + "/seed.hex"
+	err := os.WriteFile(openFile, []byte("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"), 0644)
+	require.NoError(t, err)
+	Cleanup := func(t *testing.T) {
+		t.Setenv("BLINDVAULT_MASTER_SEED_HEX", "")
+		t.Setenv("BLINDVAULT_SEED_FILE", "")
+		t.Setenv("BLINDVAULT_MASTER_SEED_INLINE", "")
+	}
+	type Source struct {
+		MasterSecretSource SecretSource
+		fn                 func()
+	}
+	t.Run("FileNotAvailable", func(t *testing.T) {
+		config := &Config{MasterSeedSource: SecretSourceFile}
+		t.Setenv("BLINDVAULT_SEED_FILE", openFile+".nonexistent")
+		err := config.LoadMasterSeed()
+		assert.Error(t, err, "Expected error when seed file is not available")
+	})
+	t.Run("FileAvailable", func(t *testing.T) {
+		config := &Config{MasterSeedSource: SecretSourceFile}
+		t.Setenv("BLINDVAULT_SEED_FILE", openFile)
+		err := config.LoadMasterSeed()
+		assert.NoError(t, err, "Expected no error when seed file is available")
+	})
+	t.Run("MasterSeedSources", func(t *testing.T) {
+		config := &Config{}
+		src := []Source{
+			{MasterSecretSource: SecretSourceEnv,
+				fn: func() {
+					t.Setenv("BLINDVAULT_MASTER_SEED_HEX", "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+				}},
+			{
+				MasterSecretSource: SecretSourceFile,
+				fn:                 func() { t.Setenv("BLINDVAULT_SEED_FILE", openFile) }},
+			{
+				MasterSecretSource: SecretSourceInline,
+				fn: func() {
+					config.MasterSeedHex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+				}},
+		}
+		for _, s := range src {
+			t.Run(string(s.MasterSecretSource), func(t *testing.T) {
+				Cleanup(t)
+				s.fn()
+				err := config.LoadMasterSeed()
+				assert.NoError(t, err, "Expected no error when master seed source is set")
+				assert.Equal(t, s.MasterSecretSource, config.MasterSeedSource, "Expected master seed source to be set to the correct source")
+			})
+		}
+		Cleanup(t)
+		err := config.LoadMasterSeed()
+		assert.Error(t, err, "Expected error when no master seed source is set")
+	})
+	t.Run("HexDecodeErrorAndLength", func(t *testing.T) {
+		config := &Config{MasterSeedSource: SecretSourceEnv}
+		t.Setenv("BLINDVAULT_MASTER_SEED_HEX", "invalidhex")
+		err := config.LoadMasterSeed()
+		assert.Error(t, err, "Expected error when master seed hex is invalid")
+		t.Setenv("BLINDVAULT_MASTER_SEED_HEX", "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e")
+		err = config.LoadMasterSeed()
+		assert.Error(t, err, "Expected error when master seed hex is not 32 bytes")
+		t.Log("error:", err)
+	})
 }
