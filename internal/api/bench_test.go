@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/internal/service"
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/internal/service"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )

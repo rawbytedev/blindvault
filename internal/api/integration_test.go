@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rawbytedev/blindvault/internal/auth"
-	"github.com/rawbytedev/blindvault/internal/service"
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/internal/auth"
+	"github.com/rawbytedev/blindvault/v2/internal/service"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"

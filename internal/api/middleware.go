@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rawbytedev/blindvault/internal/auth"
-	"github.com/rawbytedev/blindvault/pkg/apperr"
-	"github.com/rawbytedev/blindvault/pkg/logger"
+	"github.com/rawbytedev/blindvault/v2/internal/auth"
+	"github.com/rawbytedev/blindvault/v2/pkg/apperr"
+	"github.com/rawbytedev/blindvault/v2/pkg/logger"
 )
 
 // RequireRole — requires a specific role (or admin).

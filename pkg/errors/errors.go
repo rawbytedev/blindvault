@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rawbytedev/blindvault/pkg/logger"
+	"github.com/rawbytedev/blindvault/v2/pkg/logger"
 )
 
 // Wrap logs the error and returns a new error with the given message.

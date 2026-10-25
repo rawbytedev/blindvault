@@ -1,6 +1,6 @@
 package api
 
-import "github.com/rawbytedev/blindvault/internal/validation"
+import "github.com/rawbytedev/blindvault/v2/internal/validation"
 
 func ValidateIssueRequest(req IssueRequest) error {
 	return validation.ValidateIssueRequest(req)

@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rawbytedev/blindvault/pkg/crypto"
-	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/pkg/securememory"
 )
 
 const (

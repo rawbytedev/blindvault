@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/internal/api"
-	"github.com/rawbytedev/blindvault/pkg/client"
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/internal/api"
+	"github.com/rawbytedev/blindvault/v2/pkg/client"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 
 	"github.com/stretchr/testify/require"
 )

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/rawbytedev/blindvault/pkg/apperr"
+	"github.com/rawbytedev/blindvault/v2/pkg/apperr"
 )
 
 type DemoStore struct {

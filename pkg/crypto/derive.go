@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/rawbytedev/blindvault/v2/pkg/securememory"
 	blst "github.com/supranational/blst/bindings/go"
 )
 

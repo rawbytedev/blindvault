@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	mem "github.com/rawbytedev/blindvault/pkg/securememory"
+	mem "github.com/rawbytedev/blindvault/v2/pkg/securememory"
 )
 
 func TestLockedBuffer_NewLocked(t *testing.T) {

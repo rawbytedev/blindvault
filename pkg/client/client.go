@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rawbytedev/blindvault/internal/api"
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/internal/api"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 )
 
 // Client provides high-level operations for BlindVault.

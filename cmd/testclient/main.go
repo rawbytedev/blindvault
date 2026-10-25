@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 
 	"github.com/golang-jwt/jwt/v5"
 )

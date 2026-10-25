@@ -14,7 +14,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 
 	"github.com/stretchr/testify/require"
 )

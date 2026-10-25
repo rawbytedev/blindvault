@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/rawbytedev/blindvault/v2/pkg/securememory"
 )
 
 // ---------- Fixed Test Keys (wrapped in secure enclaves) ----------

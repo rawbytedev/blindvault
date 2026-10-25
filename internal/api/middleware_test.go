@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/rawbytedev/blindvault/internal/service"
+	"github.com/rawbytedev/blindvault/v2/internal/service"
 	"github.com/stretchr/testify/require"
 )
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rawbytedev/blindvault/pkg/client"
+	"github.com/rawbytedev/blindvault/v2/pkg/client"
 )
 
 // blindCmd handles the "blind" subcommand.

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rawbytedev/blindvault/internal/auth"
-	"github.com/rawbytedev/blindvault/internal/service"
-	"github.com/rawbytedev/blindvault/internal/validation"
-	"github.com/rawbytedev/blindvault/pkg/apperr"
-	"github.com/rawbytedev/blindvault/pkg/logger"
+	"github.com/rawbytedev/blindvault/v2/internal/auth"
+	"github.com/rawbytedev/blindvault/v2/internal/service"
+	"github.com/rawbytedev/blindvault/v2/internal/validation"
+	"github.com/rawbytedev/blindvault/v2/pkg/apperr"
+	"github.com/rawbytedev/blindvault/v2/pkg/logger"
 )
 
 // handleIssue handles POST /issue requests.

@@ -10,9 +10,9 @@ import (
 
 	"errors"
 
-	"github.com/rawbytedev/blindvault/internal/validation"
-	"github.com/rawbytedev/blindvault/pkg/logger"
-	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/rawbytedev/blindvault/v2/internal/validation"
+	"github.com/rawbytedev/blindvault/v2/pkg/logger"
+	"github.com/rawbytedev/blindvault/v2/pkg/securememory"
 )
 
 type SecretSource string

@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/rawbytedev/blindvault/internal/api"
-	"github.com/rawbytedev/blindvault/internal/service"
-	"github.com/rawbytedev/blindvault/pkg/logger"
+	"github.com/rawbytedev/blindvault/v2/internal/api"
+	"github.com/rawbytedev/blindvault/v2/internal/service"
+	"github.com/rawbytedev/blindvault/v2/pkg/logger"
 
 	"gopkg.in/yaml.v3"
 )

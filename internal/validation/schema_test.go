@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/internal/api"
-	"github.com/rawbytedev/blindvault/internal/validation"
+	"github.com/rawbytedev/blindvault/v2/internal/api"
+	"github.com/rawbytedev/blindvault/v2/internal/validation"
 )
 
 func TestValidateIssueRequest(t *testing.T) {

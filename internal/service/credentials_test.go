@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/internal/storage"
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/internal/storage"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 	"github.com/stretchr/testify/require"
 )
 

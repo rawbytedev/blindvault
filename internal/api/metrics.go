@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rawbytedev/blindvault/pkg/metrics"
+	"github.com/rawbytedev/blindvault/v2/pkg/metrics"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

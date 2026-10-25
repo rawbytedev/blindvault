@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/internal/service"
+	"github.com/rawbytedev/blindvault/v2/internal/service"
 	"github.com/stretchr/testify/require"
 )
 

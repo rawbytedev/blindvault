@@ -5,13 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/rawbytedev/blindvault/pkg/apperr"
-	"github.com/rawbytedev/blindvault/pkg/errors"
-	"github.com/rawbytedev/blindvault/pkg/metrics"
+	"github.com/rawbytedev/blindvault/v2/pkg/apperr"
+	"github.com/rawbytedev/blindvault/v2/pkg/errors"
+	"github.com/rawbytedev/blindvault/v2/pkg/metrics"
 
-	"github.com/rawbytedev/blindvault/internal/helper"
-	"github.com/rawbytedev/blindvault/internal/storage"
-	"github.com/rawbytedev/blindvault/pkg/crypto"
+	"github.com/rawbytedev/blindvault/v2/internal/helper"
+	"github.com/rawbytedev/blindvault/v2/internal/storage"
+	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
 )
 
 type CredentialService struct {

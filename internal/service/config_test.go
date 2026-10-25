@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/pkg/securememory"
+	"github.com/rawbytedev/blindvault/v2/pkg/securememory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

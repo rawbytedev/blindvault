@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/rawbytedev/blindvault/pkg/apperr"
-	"github.com/rawbytedev/blindvault/pkg/logger"
+	"github.com/rawbytedev/blindvault/v2/pkg/apperr"
+	"github.com/rawbytedev/blindvault/v2/pkg/logger"
 )
 
 // respondJSON writes a JSON response with the given status code.
