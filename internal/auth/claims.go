@@ -29,10 +29,8 @@ func (c *Claims) HasAnyRole(roles ...string) bool {
 		return true
 	}
 	for _, r := range roles {
-		for _, have := range c.Roles {
-			if r == have {
-				return true
-			}
+		if slices.Contains(c.Roles, r) {
+			return true
 		}
 	}
 	return false
