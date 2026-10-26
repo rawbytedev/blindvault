@@ -4,9 +4,9 @@ permissions: {}
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, v2 ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, v2 ]
 
 env:
   GO_VERSION: '1.26'
