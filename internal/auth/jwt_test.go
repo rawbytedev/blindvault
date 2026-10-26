@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -62,4 +63,31 @@ func TestJWTValidator_RejectsWrongIssuer(t *testing.T) {
 	tok := makeToken(t, "s", "u", "wrong", "", nil, false)
 	_, err := v.Validate(tok)
 	require.Error(t, err)
+}
+
+func TestClaims_HasRole(t *testing.T) {
+	c := &Claims{Roles: []string{"a", "b"}}
+	require.True(t, c.HasRole("a"))
+	require.False(t, c.HasRole("c"))
+}
+
+func TestClaims_HasAnyRole(t *testing.T) {
+	c := &Claims{Roles: []string{"a", "b"}}
+	require.True(t, c.HasAnyRole("x", "a"))
+	require.False(t, c.HasAnyRole("x", "y"))
+	c = &Claims{Admin: true}
+	require.True(t, c.HasAnyRole("x", "y"))
+	require.True(t, c.HasRole("x"))
+}
+
+func TestWithClaims(t *testing.T) {
+	c := &Claims{Roles: []string{"a", "b"}}
+	ctx := WithClaims(context.Background(), c)
+	require.NotNil(t, ctx)
+	ctxClaims, ok := ClaimsFromContext(ctx)
+	require.True(t, ok)
+	require.Equal(t, c, ctxClaims)
+	c = &Claims{Roles: []string{"c"}, RegisteredClaims: jwt.RegisteredClaims{Subject: "user-1"}}
+	Subject := SubjectFromContext(WithClaims(context.Background(), c))
+	require.Equal(t, "user-1", Subject)
 }
