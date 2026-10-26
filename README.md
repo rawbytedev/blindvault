@@ -11,7 +11,7 @@
     <img src="https://img.shields.io/github/go-mod/go-version/rawbytedev/blindvault" alt="Go Version" />
   </a>
   <a href="https://github.com/rawbytedev/blindvault">
-    <img src="https://img.shields.io/github/last-commit/rawbytedev/blindvault/main" alt="GitHub last commit" />
+    <img src="https://img.shields.io/github/last-commit/rawbytedev/blindvault" alt="GitHub last commit" />
   </a>
   <a href="https://github.com/rawbytedev/blindvault/releases/latest">
     <img src="https://img.shields.io/github/v/release/rawbytedev/blindvault" alt="GitHub Release" />
