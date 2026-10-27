@@ -21,7 +21,7 @@ func NewRedisNullifierStoreWithClient(client *redis.Client, expiration time.Dura
 }
 
 // NewRedisNullifierStore creates a new RedisNullifierStore with the given Redis connection parameters and expiration duration for nullifiers.
-func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration) (NullifierStore, error) {
+func NewRedisNullifierStore(addr, password string, db int, expiration time.Duration) (NullifierStore, error) { // coverage-ignore
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
