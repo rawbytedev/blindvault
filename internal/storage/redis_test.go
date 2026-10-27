@@ -28,6 +28,23 @@ func TestRedisNullifierStore(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, isNew)
 
+	NullStore, ok := store.(*RedisNullifierStore)
+	require.True(t, ok, "Assertion failed")
+	err = NullStore.Ping(context.Background())
+	require.NoError(t, err)
+	NullStore.SetExpiration(1 * time.Second)
+	// time.Sleep(2 * time.Second) // Wait for the nullifier to expire
+	isNew, err = store.CheckAndStore(t.Context(), nullifier)
+	time.Sleep(2 * time.Second)
+	require.NoError(t, err)
+	require.False(t, isNew)
+
+	// Run the check again after expiration to ensure it can be stored again
+	// without explicitly waiting for expiration in the test
+	isNew, err = store.CheckAndStore(t.Context(), nullifier)
+	require.NoError(t, err)
+	require.True(t, isNew)
+
 	err = store.Close()
 	require.NoError(t, err)
 }
