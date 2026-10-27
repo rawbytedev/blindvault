@@ -5,20 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRedisNullifierStore(t *testing.T) {
-	client := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   15,
-	})
+	client, err := NewRedisClient("localhost:6379", "", 15)
+	require.NoError(t, err)
 	if err := client.Ping(context.Background()).Err(); err != nil {
 		t.Skip("Redis not available, skipping test")
 	}
 	defer client.Close()
-
 	// metrics can be nil for testing
 	store, err := NewRedisNullifierStore("localhost:6379", "", 15, 2*time.Second)
 	require.NoError(t, err)
