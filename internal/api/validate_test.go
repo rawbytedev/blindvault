@@ -54,6 +54,7 @@ func TestValidateIssueRequest(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+
 		})
 	}
 }
@@ -189,6 +190,49 @@ func TestValidateAdminRevokeRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateAdminRevokeRequest(*tt.request)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateAdminUnRevokeRequest(t *testing.T) {
+	val := "gold"
+	tests := []struct {
+		name    string
+		request *AdminUnrevokeRequest
+		wantErr bool
+	}{
+		{
+			name: "Valid request - nothing omitted",
+			request: &AdminUnrevokeRequest{
+				CredentialClass: val,
+				KeyEpoch:        "2024-01",
+			},
+			wantErr: false,
+		}, {
+			name: "Valid request - key epoch omitted",
+			request: &AdminUnrevokeRequest{
+				CredentialClass: val,
+				KeyEpoch:        "",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Invalid request - CredentialClass empty",
+			request: &AdminUnrevokeRequest{
+				CredentialClass: "",
+				KeyEpoch:        "2024-01",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateAdminUnrevokeRequest(*tt.request)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
