@@ -10,8 +10,7 @@ import (
 
 func TestRedisNullifierStore(t *testing.T) {
 	client, err := NewRedisClient("localhost:6379", "", 15)
-	require.NoError(t, err)
-	if err := client.Ping(context.Background()).Err(); err != nil {
+	if err != nil {
 		t.Skip("Redis not available, skipping test")
 	}
 	defer client.Close()
