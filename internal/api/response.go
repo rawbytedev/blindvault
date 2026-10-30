@@ -12,13 +12,16 @@ import (
 
 // respondJSON writes a JSON response with the given status code.
 func (s *Server) respondJSON(ctx context.Context, w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	buf, err := json.Marshal(data)
+	if err != nil {
 		// If we can't encode, we're in a bad state. Log and fallback.
 		logger.Error(ctx).Err(err).Msg("failed to encode JSON response")
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(buf)
 }
 func (s *Server) respondErr(ctx context.Context, w http.ResponseWriter, err error, op string) {
 	code := apperr.CodeOf(err)
