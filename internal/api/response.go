@@ -21,7 +21,11 @@ func (s *Server) respondJSON(ctx context.Context, w http.ResponseWriter, status 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(buf)
+	_, err = w.Write(buf)
+	if err != nil {
+		logger.Error(ctx).Err(err).Msg("failed to write to http reply")
+		return
+	}
 }
 func (s *Server) respondErr(ctx context.Context, w http.ResponseWriter, err error, op string) {
 	code := apperr.CodeOf(err)
