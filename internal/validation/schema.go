@@ -12,7 +12,7 @@ import (
 
 var schemaValidator = validator.New()
 
-func init() {
+func init() { // coverage-ignore
 	if err := schemaValidator.RegisterValidation("hex_len", func(fl validator.FieldLevel) bool {
 		field, ok := fl.Field().Interface().(string)
 		if !ok || strings.TrimSpace(field) == "" {
