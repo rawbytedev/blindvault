@@ -603,6 +603,78 @@ func TestConsumeWrongEpoch(t *testing.T) {
 	require.Contains(t, errResp.Error, "unsupported key_epoch")
 }
 
+func TestConsumeMissingFields(t *testing.T) {
+	ts, cfg := setupTestServer(t)
+	defer ts.Close()
+
+	jwt := generateJWT(cfg.AuthSecret)
+
+	tests := []struct {
+		name      string
+		body      ConsumeRequest
+		expectMsg string
+	}{
+		{
+			name: "missing unblinded_signature",
+			body: ConsumeRequest{
+				UnblindedSignature: "",
+				CredentialClass:    "test_class",
+				Witness:            "10",
+				KeyEpoch:           "10",
+			},
+			expectMsg: "missing required fields",
+		},
+		{
+			name: "missing credential_class",
+			body: ConsumeRequest{
+				UnblindedSignature: "0123456789abcdef", // dummy hex
+				CredentialClass:    "",
+				Witness:            "10",
+				KeyEpoch:           "10",
+			},
+			expectMsg: "missing required fields",
+		},
+		{
+			name: "both missing",
+			body: ConsumeRequest{
+				UnblindedSignature: "",
+				CredentialClass:    "",
+				Witness:            "10",
+				KeyEpoch:           "10",
+			},
+			expectMsg: "missing required fields",
+		},
+		{
+			name: "invalid unblinded_signature (not hex)",
+			body: ConsumeRequest{
+				UnblindedSignature: "not-hex-value",
+				CredentialClass:    "test_class",
+				Witness:            "10",
+				KeyEpoch:           "10",
+			},
+			expectMsg: "invalid request body",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonBody, err := json.Marshal(tt.body)
+			require.NoError(t, err)
+
+			resp, err := makeRequest(ts, "POST", "/v1/credential/consume", jsonBody, "Bearer "+jwt)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			// Expect 400 for missing fields, but for invalid hex we'll get 500.
+			// validation errors should return 400 and include 'invalid request'
+			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "expected 400 for invalid input")
+			var errResp ErrorResponse
+			err = json.NewDecoder(resp.Body).Decode(&errResp)
+			require.NoError(t, err)
+			require.Contains(t, errResp.Error, "invalid request")
+		})
+	}
+}
 // TestMultipleClasses verifies that credentials from different classes are isolated.
 func TestMultipleClasses(t *testing.T) {
 	ts, cfg := setupTestServer(t)
