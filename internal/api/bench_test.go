@@ -6,61 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/v2/internal/service"
 	"github.com/rawbytedev/blindvault/v2/pkg/crypto"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/require"
 )
-
-// setupBenchServer creates a server with in-memory storage for pure performance baselines.
-// For Redis benchmarks, override the config to use a real Redis instance.
-func setupBenchServer(b *testing.B) (*httptest.Server, *service.Config, []byte) {
-	cfg := &service.Config{
-		ListenAddr:      ":8080",
-		MasterSeedHex:   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-		ActiveEpoch:     "2026-01",
-		SupportedEpochs: []string{"2026-01"},
-		DST:             "BCIS-TEST",
-		AuthSecret:      "bench-secret",
-		UseMemoryStore:  true,
-		RateLimitBurst:  0,
-		RateLimit:       0,
-	}
-	// Disable all logging for benchmarks (no output, no allocation)
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-
-	server, err := NewServer(cfg)
-	require.NoError(b, err)
-
-	ts := httptest.NewServer(server.httpServer.Handler)
-
-	// Pre-generate a valid JWT for all requests
-	jwt := generateJWT(cfg.AuthSecret)
-	authHeader := []byte("Bearer " + jwt)
-
-	return ts, cfg, authHeader
-}
-
-// generateBenchBlindedMessage creates a fresh blinded message for each request.
-func generateBenchBlindedMessage(b *testing.B) (blindedHex string, blindingFactor crypto.Scalar) {
-	engine := crypto.NewBLS12Engine()
-	msg := []byte("bench-handler-message")
-	dst := []byte("BCIS-TEST")
-
-	point, err := engine.HashToCurve(msg, dst)
-	require.NoError(b, err)
-
-	r, err := crypto.NewRandomScalar()
-	require.NoError(b, err)
-
-	blinded, err := engine.BlindMessage(point, r)
-	require.NoError(b, err)
-
-	return hex.EncodeToString(blinded.Compress()), r
-}
 
 // ----- Benchmarks for /health (pure middleware baseline) -----
 

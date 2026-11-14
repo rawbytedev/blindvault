@@ -2,32 +2,10 @@ package api
 
 import (
 	"encoding/json"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/rawbytedev/blindvault/v2/internal/service"
 	"github.com/stretchr/testify/require"
 )
-
-// spawn a test server with demo store enabled
-func setupTestDemoServer(t *testing.T) (*httptest.Server, *service.Config) {
-	cfg := &service.Config{
-		ListenAddr:      ":8080",
-		MasterSeedHex:   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-		ActiveEpoch:     "2026-01",
-		SupportedEpochs: []string{"2026-01", "2026-02"},
-		DST:             "BCIS-TEST",
-		AuthSecret:      "test-secret",
-		UseMemoryStore:  true,
-		RateLimitBurst:  20,
-		RateLimit:       100,
-		UseDemo:         true,
-	}
-	server, err := NewServer(cfg)
-	require.NoError(t, err)
-	ts := httptest.NewServer(server.httpServer.Handler)
-	return ts, cfg
-}
 
 // TestDemoStoreStoreCredentialsSuccess tests storing credentials in the demo store
 func TestDemoStoreStoreCredentialsSuccess(t *testing.T) {
