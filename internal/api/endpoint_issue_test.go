@@ -214,10 +214,6 @@ func TestIssueUnauthenticated(t *testing.T) {
 }
 
 func TestHandleIssue(t *testing.T) {
-	type BadIssueRequest struct {
-		Blinded    string `json:"blinded"`
-		Credential string `json:"credential"`
-	}
 	server, cfg := setupTestDummyServer(t)
 	jwt := generateJWT(cfg.AuthSecret)
 	// json should fail
