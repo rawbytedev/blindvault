@@ -9,7 +9,7 @@ import (
 // Generate a random IP address
 func GenerateRandomAdress(n int) []string {
 	addrs := []string{}
-	for _ = range n {
+	for range n {
 		ip := fmt.Sprintf("%d.%d.%d.%d", rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(256))
 		addrs = append(addrs, ip)
 	}
