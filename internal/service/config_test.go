@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/hex"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -280,4 +281,30 @@ func TestLoadMasterSeed(t *testing.T) {
 		assert.Error(t, err, "Expected error when master seed hex is not 32 bytes")
 		t.Log("error:", err)
 	})
+}
+
+func TestOverides(t *testing.T) {
+	env := SetupTestEnv(t)
+	config := &Config{}
+	config.ApplyEnvOverrides()
+	assert.EqualValues(t, env["BLINDVAULT_MODE"], config.Mode)
+	assert.Equal(t, env["ACTIVE_EPOCH"], config.ActiveEpoch)
+	assert.Equal(t, env["SUPPORTED_EPOCHS"], strings.Join(config.SupportedEpochs, ","))
+	assert.Equal(t, env["DST"], config.DST)
+	assert.Equal(t, env["AUTH_SECRET"], config.AuthSecret)
+	assert.Equal(t, env["JWT_ISSUER"], config.JWTIssuer)
+	assert.Equal(t, env["JWT_AUDIENCE"], config.JWTAudience)
+	assert.Equal(t, env["LISTEN_ADDR"], config.ListenAddr)
+	assert.Equal(t, env["REDIS_ADDR"], config.RedisAddr)
+	assert.Equal(t, env["REDIS_PASSWORD"], config.RedisPassword)
+	assert.Equal(t, env["REDIS_DB"], strconv.Itoa(config.RedisDB))
+	assert.Equal(t, env["REDIS_EXPIRATION"], strconv.Itoa(config.RedisExpiration))
+	assert.Equal(t, env["REVOCATION_REDIS_ADDR"], config.RevocationRedisAddr)
+	assert.Equal(t, env["REVOCATION_REDIS_PASSWORD"], config.RevocationRedisPassword)
+	assert.Equal(t, env["REVOCATION_REDIS_DB"], strconv.Itoa(config.RevocationRedisDB))
+	assert.Equal(t, env["USE_MEMORY_STORE"], strconv.FormatBool(config.UseMemoryStore))
+	assert.Equal(t, env["USE_DEMO"], strconv.FormatBool(config.UseDemo))
+	assert.Equal(t, env["RATE_LIMIT_BURST"], strconv.Itoa(config.RateLimitBurst))
+	assert.Equal(t, env["RATE_LIMIT_REQUESTS"], strconv.Itoa(config.RateLimit))
+	assert.Equal(t, env["MAX_CLIENTS"], strconv.Itoa(config.MaxClients))
 }
