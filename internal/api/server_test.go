@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rawbytedev/blindvault/v2/internal/service"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,6 +44,16 @@ func TestServerInitialization(t *testing.T) {
 }
 
 func TestLiveConfigServerInitialization(t *testing.T) {
+	// Skip if no Redis available
+	client := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+		DB:   15,
+	})
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		t.Skip("Redis not available")
+	}
+	defer client.Close()
+
 	config := &service.Config{
 		UseMemoryStore: false,
 		AuthSecret:     "testsecret",
