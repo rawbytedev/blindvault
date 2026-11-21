@@ -71,3 +71,28 @@ func TestCredentialService_Close(t *testing.T) {
 	err := svc.Close()
 	require.NoError(t, err)
 }
+
+func TestCredentialService_Ping(t *testing.T) {
+	cfg := &Config{
+		MasterSeedHex:   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+		ActiveEpoch:     "2026-01",
+		SupportedEpochs: []string{"2026-01"},
+		DST:             "BCIS-TEST",
+		UseMemoryStore:  true,
+	}
+	nullifierStore := storage.NewInMemoryNullifierStore()
+	revocationStore := storage.NewInMemoryRevocationStore()
+	svc := NewCredentialService(cfg, nullifierStore, revocationStore, nil)
+
+	err := svc.Ping(t.Context())
+	require.NoError(t, err)
+
+	svcWithNilStore := NewCredentialService(cfg, nil, nil, nil)
+	err = svcWithNilStore.Ping(t.Context())
+	require.NoError(t, err)
+
+	svcWithNilRevocationStore := NewCredentialService(cfg, nullifierStore, nil, nil)
+	err = svcWithNilRevocationStore.Ping(t.Context())
+	require.NoError(t, err)
+
+}
