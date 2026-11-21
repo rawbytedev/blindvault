@@ -56,13 +56,14 @@ func (s *CredentialService) Ping(ctx context.Context) error {
 	if s.store == nil {
 		return fmt.Errorf("nullifier store is not configured")
 	}
+	if s.revocationStore == nil {
+		return fmt.Errorf("revocation store is not configured")
+	}
 	if err := s.store.Ping(ctx); err != nil {
 		return fmt.Errorf("nullifier store ping failed: %w", err)
 	}
-	if s.revocationStore != nil {
-		if err := s.revocationStore.Ping(ctx); err != nil {
-			return fmt.Errorf("revocation store ping failed: %w", err)
-		}
+	if err := s.revocationStore.Ping(ctx); err != nil {
+		return fmt.Errorf("revocation store ping failed: %w", err)
 	}
 	return nil
 }
