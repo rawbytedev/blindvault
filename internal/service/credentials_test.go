@@ -89,10 +89,10 @@ func TestCredentialService_Ping(t *testing.T) {
 
 	svcWithNilStore := NewCredentialService(cfg, nil, nil, nil)
 	err = svcWithNilStore.Ping(t.Context())
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	svcWithNilRevocationStore := NewCredentialService(cfg, nullifierStore, nil, nil)
 	err = svcWithNilRevocationStore.Ping(t.Context())
-	require.NoError(t, err)
+	require.Error(t, err)
 
 }
