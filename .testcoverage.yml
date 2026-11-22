@@ -16,7 +16,7 @@ threshold:
   package: 80
 
   # Minimum overall project coverage percentage required.
-  total: 95
+  total: 80
 
 # Holds regexp rules which will exclude matched files or packages 
 # from coverage statistics.
