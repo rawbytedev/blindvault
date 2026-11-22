@@ -25,7 +25,6 @@ exclude:
   paths:
     - ^scripts
     - ^cmd
-    - ^internal/service/config\.go$
 
 # (optional; default false)
 # When true, requires all coverage-ignore annotations to include explanatory comments
