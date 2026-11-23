@@ -33,8 +33,9 @@ func TestRedisNullifierStore(t *testing.T) {
 	require.NoError(t, err)
 	NullStore.SetExpiration(1 * time.Second)
 	// time.Sleep(2 * time.Second) // Wait for the nullifier to expire
+	// 4 sec give just enough time and avoid additonal timing issue
 	isNew, err = store.CheckAndStore(t.Context(), nullifier)
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 	require.NoError(t, err)
 	require.False(t, isNew)
 
