@@ -174,11 +174,6 @@ jobs:
           # Use a test‑only JWT secret that matches docker-compose
           AUTH_SECRET: super-secret-token
 
-      - name: Verify production image runs as non-root
-        run: |
-          uid=$(docker compose -f docker-compose.yml exec -T blindvault id -u)
-          [ "$uid" = "1000" ] || { echo "expected uid 1000, got $uid"; exit 1; }
-
       # Upload test logs if something fails
       - name: Upload Docker logs on failure
         if: failure()

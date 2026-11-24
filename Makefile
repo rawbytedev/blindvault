@@ -40,5 +40,13 @@ clean:
 	rm -rf ./bin
 	docker compose -f $(COMPOSE) down -v
 
+docker-verify-nonroot: docker-up
+	@uid=$$(docker compose -f $(COMPOSE) exec -T blindvault id -u); \
+	if [ "$$uid" != "1000" ]; then \
+		echo "expected uid 1000, got '$$uid'"; \
+		exit 1; \
+	fi; \
+	echo "container runs as uid $$uid"
+
 # Full CI pipeline
 ci: docker-build docker-test docker-down
