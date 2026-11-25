@@ -40,7 +40,7 @@ func NewServer(cfg *service.Config) (*Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		nullifierStore = storage.NewRedisNullifierStoreWithClient(redisClient, time.Duration(cfg.RedisExpiration))
+		nullifierStore = storage.NewRedisNullifierStoreWithClient(redisClient, time.Duration(cfg.RedisExpiration)*time.Second)
 		// Revocation store: use separate Redis if configured, otherwise reuse main client
 		if cfg.RevocationRedisAddr != "" {
 			revClient, err := storage.NewRedisClient(cfg.RevocationRedisAddr, cfg.RevocationRedisPassword, cfg.RevocationRedisDB)
