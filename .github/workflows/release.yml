@@ -26,21 +26,16 @@ jobs:
         goarch: [amd64, arm64]
         exclude:
           - goos: windows
-            goarch: arm64   # blst doesn't support windows/arm64
+            goarch: arm64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-
       - name: Install cross-compilers
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64-x86-64 gcc-aarch64-linux-gnu
-
       - name: Build binaries
         env:
           GOOS: ${{ matrix.goos }}
@@ -54,9 +49,7 @@ jobs:
         run: |
           go build -o bv-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} ./cmd/bv
           go build -o blindvault-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} ./cmd/server
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
@@ -69,26 +62,17 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: js_client/package-lock.json
-
-      - name: Install JS dependencies
-        working-directory: js_client
+      - working-directory: js_client
         run: npm ci
-
-      - name: Build JS SDK package
-        working-directory: js_client
+      - working-directory: js_client
         run: npm run build:lib && npm pack
-
-      - name: Upload JS SDK artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: js-sdk-package
           path: js_client/*.tgz
@@ -96,62 +80,109 @@ jobs:
   release:
     name: Create draft release and attach binaries
     permissions:
-      contents: write  # required to create releases
+      contents: write
     needs: [build, js-sdk]
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VERSION: ${{ github.event.inputs.version }}
+      IS_DRAFT: ${{ github.event.inputs.draft }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history + tags
-          fetch-tags: true
+          fetch-depth: 0
 
-      
-      - name: Download all built binaries and SDK
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Generate release notes from commits
-        id: changelog
         env:
           CURRENT_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
           git fetch --tags --force
-
-          # Most recent tag
           PREV_TAG=$(git tag --sort=-v:refname | grep -vxF -- "$CURRENT_VERSION" | head -n1 || true)
-
           if [ -z "${PREV_TAG:-}" ]; then
-            echo "No previous tag found — listing all commits."
             RANGE="HEAD"
             HEADER="## What's Changed\n\n_(no previous release found — showing full history)_"
           else
-            echo "Previous tag: $PREV_TAG"
             RANGE="${PREV_TAG}..HEAD"
             HEADER="## What's Changed since \`${PREV_TAG}\`"
           fi
-
           {
             printf "%b\n\n" "$HEADER"
             git log "$RANGE" --no-merges --pretty=format:'- %s (%h) — @%an'
             echo
           } > RELEASE_BODY.md
-
           echo "----- RELEASE_BODY.md -----"
           cat RELEASE_BODY.md
-          echo "---------------------------"
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: Release ${{ github.event.inputs.version }}
-          draft: ${{ github.event.inputs.draft }}
-          body_path: RELEASE_BODY.md
-          files: |
-            artifacts/**/bv-*
-            artifacts/**/blindvault-*
-            artifacts/**/*.tgz
+      - name: Remove any existing draft for this version
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            IS_EXISTING_DRAFT=$(gh release view "$VERSION" --json isDraft --jq '.isDraft')
+            if [ "$IS_EXISTING_DRAFT" = "true" ]; then
+              echo "Deleting existing draft release for $VERSION"
+              gh release delete "$VERSION" --yes
+            else
+              echo "A PUBLISHED release already exists for $VERSION. Refusing to overwrite."
+              exit 1
+            fi
+          fi
+
+      - name: Create release (with retry)
+        run: |
+          set -euo pipefail
+          DRAFT_FLAG=""
+          [ "$IS_DRAFT" = "true" ] && DRAFT_FLAG="--draft"
+
+          # --target ensures the tag is created at the current commit when it
+          # doesn't already exist. If it does exist, --target is ignored.
+          for attempt in 1 2 3 4 5; do
+            echo "Create attempt $attempt..."
+            if gh release create "$VERSION" \
+                 $DRAFT_FLAG \
+                 --title "Release $VERSION" \
+                 --notes-file RELEASE_BODY.md \
+                 --target "$GITHUB_SHA"; then
+              echo "Release created."
+              exit 0
+            fi
+            # If a release for this tag already exists (e.g. the 502 happened
+            # *after* the server committed), just continue to upload.
+            if gh release view "$VERSION" >/dev/null 2>&1; then
+              echo "Release exists despite error — proceeding."
+              exit 0
+            fi
+            sleep $((attempt * 10))
+          done
+          echo "Could not create release after retries." >&2
+          exit 1
+
+      - name: Upload assets (idempotent, with retry)
+        run: |
+          set -euo pipefail
+          mapfile -t FILES < <(find artifacts -type f \
+            \( -name 'bv-*' -o -name 'blindvault-*' -o -name '*.tgz' \) | sort)
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No artifacts found to upload." >&2
+            exit 1
+          fi
+
+          echo "Uploading ${#FILES[@]} files:"
+          printf '  %s\n' "${FILES[@]}"
+
+          for attempt in 1 2 3 4 5; do
+            echo "Upload attempt $attempt..."
+            if gh release upload "$VERSION" "${FILES[@]}" --clobber; then
+              echo "Upload succeeded."
+              exit 0
+            fi
+            sleep $((attempt * 10))
+          done
+          echo "All upload attempts failed." >&2
+          exit 1
